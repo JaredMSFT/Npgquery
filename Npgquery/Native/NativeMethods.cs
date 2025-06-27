@@ -35,10 +35,11 @@ internal static unsafe class NativeMethods
     /// Fingerprint result structure from libpg_query
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal struct PgQueryFingerprintResult
-    {
-        public IntPtr fingerprint_str;
-        public IntPtr error;
+    internal struct PgQueryFingerprintResult {
+        public ulong fingerprint;
+        public IntPtr fingerprint_str;    // Don't read directly - use Marshal.PtrToStringAnsi
+        public IntPtr stderr_buffer;
+        public IntPtr error;              // Pointer to error struct
     }
 
     /// <summary>
@@ -182,4 +183,5 @@ internal static unsafe class NativeMethods
         Array.Resize(ref bytes, bytes.Length + 1); // Add null terminator
         return bytes;
     }
+
 }
