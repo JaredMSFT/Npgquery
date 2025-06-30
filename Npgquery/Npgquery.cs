@@ -6,10 +6,8 @@ namespace NpgqueryLib;
 /// <summary>
 /// Main PostgreSQL query parser class providing parsing, normalization, and fingerprinting functionality
 /// </summary>
-public sealed class Npgquery : IDisposable
-{
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
+public sealed class Npgquery : IDisposable {
+    private static readonly JsonSerializerOptions JsonOptions = new() {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
         WriteIndented = false
     };
@@ -24,39 +22,32 @@ public sealed class Npgquery : IDisposable
     /// <returns>Parse result containing the AST or error information</returns>
     /// <exception cref="ArgumentNullException">Thrown when query is null</exception>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed</exception>
-    public ParseResult Parse(string query, ParseOptions? options = null)
-    {
+    public ParseResult Parse(string query, ParseOptions? options = null) {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(query);
 
         options ??= ParseOptions.Default;
 
-        try
-        {
+        try {
             var inputBytes = NativeMethods.StringToUtf8Bytes(query);
             var result = NativeMethods.pg_query_parse(inputBytes);
 
-            try
-            {
+            try {
                 var parseTree = NativeMethods.PtrToString(result.tree);
                 var error = NativeMethods.PtrToString(result.error);
 
-                return new ParseResult
-                {
+                return new ParseResult {
                     Query = query,
                     ParseTree = parseTree,
                     Error = error
                 };
             }
-            finally
-            {
+            finally {
                 NativeMethods.pg_query_free_parse_result(result);
             }
         }
-        catch (Exception ex)
-        {
-            return new ParseResult
-            {
+        catch (Exception ex) {
+            return new ParseResult {
                 Query = query,
                 Error = $"Native library error: {ex.Message}"
             };
@@ -70,37 +61,30 @@ public sealed class Npgquery : IDisposable
     /// <returns>Normalize result containing the normalized query or error information</returns>
     /// <exception cref="ArgumentNullException">Thrown when query is null</exception>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed</exception>
-    public NormalizeResult Normalize(string query)
-    {
+    public NormalizeResult Normalize(string query) {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(query);
 
-        try
-        {
+        try {
             var inputBytes = NativeMethods.StringToUtf8Bytes(query);
             var result = NativeMethods.pg_query_normalize(inputBytes);
 
-            try
-            {
+            try {
                 var normalizedQuery = NativeMethods.PtrToString(result.normalized_query);
                 var error = NativeMethods.PtrToString(result.error);
 
-                return new NormalizeResult
-                {
+                return new NormalizeResult {
                     Query = query,
                     NormalizedQuery = normalizedQuery,
                     Error = error
                 };
             }
-            finally
-            {
+            finally {
                 NativeMethods.pg_query_free_normalize_result(result);
             }
         }
-        catch (Exception ex)
-        {
-            return new NormalizeResult
-            {
+        catch (Exception ex) {
+            return new NormalizeResult {
                 Query = query,
                 Error = $"Native library error: {ex.Message}"
             };
@@ -114,37 +98,30 @@ public sealed class Npgquery : IDisposable
     /// <returns>Fingerprint result containing the fingerprint hash or error information</returns>
     /// <exception cref="ArgumentNullException">Thrown when query is null</exception>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed</exception>
-    public FingerprintResult Fingerprint(string query)
-    {
+    public FingerprintResult Fingerprint(string query) {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(query);
 
-        try
-        {
+        try {
             var inputBytes = NativeMethods.StringToUtf8Bytes(query);
             var result = NativeMethods.pg_query_fingerprint(inputBytes);
 
-            try
-            {
+            try {
                 var fingerprint = NativeMethods.PtrToString(result.fingerprint_str);
                 var error = NativeMethods.PtrToString(result.error);
 
-                return new FingerprintResult
-                {
+                return new FingerprintResult {
                     Query = query,
                     Fingerprint = fingerprint,
                     Error = error
                 };
             }
-            finally
-            {
+            finally {
                 NativeMethods.pg_query_free_fingerprint_result(result);
             }
         }
-        catch (Exception ex)
-        {
-            return new FingerprintResult
-            {
+        catch (Exception ex) {
+            return new FingerprintResult {
                 Query = query,
                 Error = $"Native library error: {ex.Message}"
             };
@@ -158,20 +135,16 @@ public sealed class Npgquery : IDisposable
     /// <param name="query">The SQL query to parse</param>
     /// <param name="options">Parse options (optional)</param>
     /// <returns>Parsed AST as the specified type, or null if parsing failed</returns>
-    public T? ParseAs<T>(string query, ParseOptions? options = null) where T : class
-    {
+    public T? ParseAs<T>(string query, ParseOptions? options = null) where T : class {
         var result = Parse(query, options);
-        if (result.IsError || string.IsNullOrEmpty(result.ParseTree))
-        {
+        if (result.IsError || string.IsNullOrEmpty(result.ParseTree)) {
             return null;
         }
 
-        try
-        {
+        try {
             return JsonSerializer.Deserialize<T>(result.ParseTree, JsonOptions);
         }
-        catch
-        {
+        catch {
             return null;
         }
     }
@@ -181,8 +154,7 @@ public sealed class Npgquery : IDisposable
     /// </summary>
     /// <param name="query">The SQL query to validate</param>
     /// <returns>True if the query is valid, false otherwise</returns>
-    public bool IsValid(string query)
-    {
+    public bool IsValid(string query) {
         var result = Parse(query);
         return result.IsSuccess;
     }
@@ -192,8 +164,7 @@ public sealed class Npgquery : IDisposable
     /// </summary>
     /// <param name="query">The SQL query to check</param>
     /// <returns>Error message if invalid, null if valid</returns>
-    public string? GetError(string query)
-    {
+    public string? GetError(string query) {
         var result = Parse(query);
         return result.Error;
     }
@@ -201,8 +172,7 @@ public sealed class Npgquery : IDisposable
     /// <summary>
     /// Dispose of the Npgquery instance
     /// </summary>
-    public void Dispose()
-    {
+    public void Dispose() {
         _disposed = true;
     }
 
@@ -212,8 +182,7 @@ public sealed class Npgquery : IDisposable
     /// <param name="query">The SQL query to parse</param>
     /// <param name="options">Parse options (optional)</param>
     /// <returns>Parse result</returns>
-    public static ParseResult QuickParse(string query, ParseOptions? options = null)
-    {
+    public static ParseResult QuickParse(string query, ParseOptions? options = null) {
         using var parser = new Npgquery();
         return parser.Parse(query, options);
     }
@@ -223,8 +192,7 @@ public sealed class Npgquery : IDisposable
     /// </summary>
     /// <param name="query">The SQL query to normalize</param>
     /// <returns>Normalize result</returns>
-    public static NormalizeResult QuickNormalize(string query)
-    {
+    public static NormalizeResult QuickNormalize(string query) {
         using var parser = new Npgquery();
         return parser.Normalize(query);
     }
@@ -234,8 +202,7 @@ public sealed class Npgquery : IDisposable
     /// </summary>
     /// <param name="query">The SQL query to fingerprint</param>
     /// <returns>Fingerprint result</returns>
-    public static FingerprintResult QuickFingerprint(string query)
-    {
+    public static FingerprintResult QuickFingerprint(string query) {
         using var parser = new Npgquery();
         return parser.Fingerprint(query);
     }
@@ -247,37 +214,30 @@ public sealed class Npgquery : IDisposable
     /// <returns>Deparse result containing the SQL query or error information</returns>
     /// <exception cref="ArgumentNullException">Thrown when parseTree is null</exception>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed</exception>
-    public DeparseResult Deparse(string parseTree)
-    {
+    public DeparseResult Deparse(string parseTree) {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(parseTree);
 
-        try
-        {
+        try {
             var inputBytes = NativeMethods.StringToUtf8Bytes(parseTree);
             var result = NativeMethods.pg_query_deparse(inputBytes);
 
-            try
-            {
+            try {
                 var query = NativeMethods.PtrToString(result.query);
                 var error = NativeMethods.PtrToString(result.error);
 
-                return new DeparseResult
-                {
+                return new DeparseResult {
                     Ast = parseTree,
                     Query = query,
                     Error = error
                 };
             }
-            finally
-            {
+            finally {
                 NativeMethods.pg_query_free_deparse_result(result);
             }
         }
-        catch (Exception ex)
-        {
-            return new DeparseResult
-            {
+        catch (Exception ex) {
+            return new DeparseResult {
                 Ast = parseTree,
                 Error = $"Native library error: {ex.Message}"
             };
@@ -291,50 +251,41 @@ public sealed class Npgquery : IDisposable
     /// <returns>Split result containing individual statements or error information</returns>
     /// <exception cref="ArgumentNullException">Thrown when query is null</exception>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed</exception>
-    public SplitResult Split(string query)
-    {
+    public SplitResult Split(string query) {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(query);
 
-        try
-        {
+        try {
             var inputBytes = NativeMethods.StringToUtf8Bytes(query);
-            var result = NativeMethods.pg_query_split_with_scanner(inputBytes);
+            var result = NativeMethods.pg_query_split_with_parser(inputBytes);
 
-            try
-            {
-                var stmtsJson = NativeMethods.PtrToString(result.stmts);
+            try {
+                var stmts = NativeMethods.MarshalSplitStmts(result);
                 var error = NativeMethods.PtrToString(result.error);
 
-                SqlStatement[]? statements = null;
-                if (!string.IsNullOrEmpty(stmtsJson))
-                {
-                    try
-                    {
-                        statements = JsonSerializer.Deserialize<SqlStatement[]>(stmtsJson, JsonOptions);
-                    }
-                    catch
-                    {
-                        // Ignore JSON deserialization errors
-                    }
+                var statements = new List<SqlStatement>();
+                foreach (var stmt in stmts) {
+
+                    statements.Add(new SqlStatement {
+                        Location = stmt.stmt_location,
+                        Length = stmt.stmt_len,
+                        Statement = query.Substring(stmt.stmt_location, stmt.stmt_len)
+                    });
+
                 }
 
-                return new SplitResult
-                {
+                return new SplitResult {
                     Query = query,
-                    Statements = statements,
+                    Statements = statements.ToArray(),
                     Error = error
                 };
             }
-            finally
-            {
+            finally {
                 NativeMethods.pg_query_free_split_result(result);
             }
         }
-        catch (Exception ex)
-        {
-            return new SplitResult
-            {
+        catch (Exception ex) {
+            return new SplitResult {
                 Query = query,
                 Error = $"Native library error: {ex.Message}"
             };
@@ -348,50 +299,40 @@ public sealed class Npgquery : IDisposable
     /// <returns>Scan result containing tokens or error information</returns>
     /// <exception cref="ArgumentNullException">Thrown when query is null</exception>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed</exception>
-    public ScanResult Scan(string query)
-    {
+    public ScanResult Scan(string query) {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(query);
 
-        try
-        {
+        try {
             var inputBytes = NativeMethods.StringToUtf8Bytes(query);
             var result = NativeMethods.pg_query_scan(inputBytes);
 
-            try
-            {
+            try {
                 var tokensJson = NativeMethods.PtrToString(result.tokens);
                 var error = NativeMethods.PtrToString(result.error);
 
                 SqlToken[]? tokens = null;
-                if (!string.IsNullOrEmpty(tokensJson))
-                {
-                    try
-                    {
+                if (!string.IsNullOrEmpty(tokensJson)) {
+                    try {
                         tokens = JsonSerializer.Deserialize<SqlToken[]>(tokensJson, JsonOptions);
                     }
-                    catch
-                    {
+                    catch {
                         // Ignore JSON deserialization errors
                     }
                 }
 
-                return new ScanResult
-                {
+                return new ScanResult {
                     Query = query,
                     Tokens = tokens,
                     Error = error
                 };
             }
-            finally
-            {
+            finally {
                 NativeMethods.pg_query_free_scan_result(result);
             }
         }
-        catch (Exception ex)
-        {
-            return new ScanResult
-            {
+        catch (Exception ex) {
+            return new ScanResult {
                 Query = query,
                 Error = $"Native library error: {ex.Message}"
             };
@@ -405,37 +346,30 @@ public sealed class Npgquery : IDisposable
     /// <returns>Parse result containing the AST or error information</returns>
     /// <exception cref="ArgumentNullException">Thrown when plpgsqlCode is null</exception>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed</exception>
-    public PlpgsqlParseResult ParsePlpgsql(string plpgsqlCode)
-    {
+    public PlpgsqlParseResult ParsePlpgsql(string plpgsqlCode) {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(plpgsqlCode);
 
-        try
-        {
+        try {
             var inputBytes = NativeMethods.StringToUtf8Bytes(plpgsqlCode);
             var result = NativeMethods.pg_query_parse_plpgsql(inputBytes);
 
-            try
-            {
+            try {
                 var parseTree = NativeMethods.PtrToString(result.tree);
                 var error = NativeMethods.PtrToString(result.error);
 
-                return new PlpgsqlParseResult
-                {
+                return new PlpgsqlParseResult {
                     Query = plpgsqlCode,
                     ParseTree = parseTree,
                     Error = error
                 };
             }
-            finally
-            {
+            finally {
                 NativeMethods.pg_query_free_plpgsql_parse_result(result);
             }
         }
-        catch (Exception ex)
-        {
-            return new PlpgsqlParseResult
-            {
+        catch (Exception ex) {
+            return new PlpgsqlParseResult {
                 Query = plpgsqlCode,
                 Error = $"Native library error: {ex.Message}"
             };
@@ -447,8 +381,7 @@ public sealed class Npgquery : IDisposable
     /// </summary>
     /// <param name="parseTree">The AST JSON to deparse</param>
     /// <returns>Deparse result</returns>
-    public static DeparseResult QuickDeparse(string parseTree)
-    {
+    public static DeparseResult QuickDeparse(string parseTree) {
         using var parser = new Npgquery();
         return parser.Deparse(parseTree);
     }
@@ -458,8 +391,7 @@ public sealed class Npgquery : IDisposable
     /// </summary>
     /// <param name="query">The SQL string to split</param>
     /// <returns>Split result</returns>
-    public static SplitResult QuickSplit(string query)
-    {
+    public static SplitResult QuickSplit(string query) {
         using var parser = new Npgquery();
         return parser.Split(query);
     }
@@ -469,8 +401,7 @@ public sealed class Npgquery : IDisposable
     /// </summary>
     /// <param name="query">The SQL query to scan</param>
     /// <returns>Scan result</returns>
-    public static ScanResult QuickScan(string query)
-    {
+    public static ScanResult QuickScan(string query) {
         using var parser = new Npgquery();
         return parser.Scan(query);
     }
@@ -480,8 +411,7 @@ public sealed class Npgquery : IDisposable
     /// </summary>
     /// <param name="plpgsqlCode">The PL/pgSQL code to parse</param>
     /// <returns>PL/pgSQL parse result</returns>
-    public static PlpgsqlParseResult QuickParsePlpgsql(string plpgsqlCode)
-    {
+    public static PlpgsqlParseResult QuickParsePlpgsql(string plpgsqlCode) {
         using var parser = new Npgquery();
         return parser.ParsePlpgsql(plpgsqlCode);
     }

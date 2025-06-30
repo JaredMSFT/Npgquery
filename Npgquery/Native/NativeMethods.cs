@@ -53,12 +53,24 @@ internal static unsafe class NativeMethods
     }
 
     /// <summary>
+    /// Split statement structure from libpg_query
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct PgQuerySplitStmt
+    {
+        public int stmt_location;
+        public int stmt_len;
+    }
+
+    /// <summary>
     /// Split result structure from libpg_query
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal struct PgQuerySplitResult
     {
-        public IntPtr stmts;
+        public IntPtr stmts; // Pointer to array of pointers to PgQuerySplitStmt
+        public int n_stmts;
+        public IntPtr stderr_buffer;
         public IntPtr error;
     }
 
@@ -108,6 +120,12 @@ internal static unsafe class NativeMethods
 
     /// <summary>
     /// Split multiple PostgreSQL statements
+    /// </summary>
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern PgQuerySplitResult pg_query_split_with_parser(byte[] input);
+
+    /// <summary>
+    /// Split multiple PostgreSQL statements using the scanner
     /// </summary>
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
     internal static extern PgQuerySplitResult pg_query_split_with_scanner(byte[] input);
@@ -182,6 +200,24 @@ internal static unsafe class NativeMethods
         var bytes = Encoding.UTF8.GetBytes(input);
         Array.Resize(ref bytes, bytes.Length + 1); // Add null terminator
         return bytes;
+    }
+
+    /// <summary>
+    /// Helper to marshal PgQuerySplitStmt*[] from PgQuerySplitResult
+    /// </summary>
+    internal static PgQuerySplitStmt[] MarshalSplitStmts(PgQuerySplitResult result)
+    {
+        if (result.n_stmts == 0 || result.stmts == IntPtr.Zero)
+            return Array.Empty<PgQuerySplitStmt>();
+
+        var stmts = new PgQuerySplitStmt[result.n_stmts];
+        int ptrSize = Marshal.SizeOf<IntPtr>();
+        for (int i = 0; i < result.n_stmts; i++)
+        {
+            IntPtr stmtPtr = Marshal.ReadIntPtr(result.stmts, i * ptrSize);
+            stmts[i] = Marshal.PtrToStructure<PgQuerySplitStmt>(stmtPtr);
+        }
+        return stmts;
     }
 
 }
