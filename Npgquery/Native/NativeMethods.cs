@@ -6,16 +6,14 @@ namespace NpgqueryLib.Native;
 /// <summary>
 /// Native interop for libpg_query
 /// </summary>
-internal static unsafe class NativeMethods
-{
+internal static unsafe class NativeMethods {
     private const string LibraryName = "pg_query";
 
     /// <summary>
     /// Result structure from libpg_query
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal struct PgQueryResult
-    {
+    internal struct PgQueryResult {
         public IntPtr tree;
         public IntPtr stderr_buffer;
         public IntPtr error;
@@ -25,8 +23,7 @@ internal static unsafe class NativeMethods
     /// Normalize result structure from libpg_query
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal struct PgQueryNormalizeResult
-    {
+    internal struct PgQueryNormalizeResult {
         public IntPtr normalized_query;
         public IntPtr error;
     }
@@ -46,8 +43,7 @@ internal static unsafe class NativeMethods
     /// Deparse result structure from libpg_query
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal struct PgQueryDeparseResult
-    {
+    internal struct PgQueryDeparseResult {
         public IntPtr query;
         public IntPtr error;
     }
@@ -56,8 +52,7 @@ internal static unsafe class NativeMethods
     /// Split statement structure from libpg_query
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal struct PgQuerySplitStmt
-    {
+    internal struct PgQuerySplitStmt {
         public int stmt_location;
         public int stmt_len;
     }
@@ -66,8 +61,7 @@ internal static unsafe class NativeMethods
     /// Split result structure from libpg_query
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal struct PgQuerySplitResult
-    {
+    internal struct PgQuerySplitResult {
         public IntPtr stmts; // Pointer to array of pointers to PgQuerySplitStmt
         public int n_stmts;
         public IntPtr stderr_buffer;
@@ -78,8 +72,7 @@ internal static unsafe class NativeMethods
     /// Scan result structure from libpg_query
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal struct PgQueryScanResult
-    {
+    internal struct PgQueryScanResult {
         public IntPtr tokens;
         public IntPtr error;
     }
@@ -88,8 +81,7 @@ internal static unsafe class NativeMethods
     /// PL/pgSQL parse result structure
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal struct PgQueryPlpgsqlParseResult
-    {
+    internal struct PgQueryPlpgsqlParseResult {
         public IntPtr tree;
         public IntPtr error;
     }
@@ -187,16 +179,14 @@ internal static unsafe class NativeMethods
     /// <summary>
     /// Convert IntPtr to string safely
     /// </summary>
-    internal static string? PtrToString(IntPtr ptr)
-    {
+    internal static string? PtrToString(IntPtr ptr) {
         return ptr == IntPtr.Zero ? null : Marshal.PtrToStringUTF8(ptr);
     }
 
     /// <summary>
     /// Convert string to UTF-8 byte array for native calls
     /// </summary>
-    internal static byte[] StringToUtf8Bytes(string input)
-    {
+    internal static byte[] StringToUtf8Bytes(string input) {
         var bytes = Encoding.UTF8.GetBytes(input);
         Array.Resize(ref bytes, bytes.Length + 1); // Add null terminator
         return bytes;
@@ -205,15 +195,13 @@ internal static unsafe class NativeMethods
     /// <summary>
     /// Helper to marshal PgQuerySplitStmt*[] from PgQuerySplitResult
     /// </summary>
-    internal static PgQuerySplitStmt[] MarshalSplitStmts(PgQuerySplitResult result)
-    {
+    internal static PgQuerySplitStmt[] MarshalSplitStmts(PgQuerySplitResult result) {
         if (result.n_stmts == 0 || result.stmts == IntPtr.Zero)
             return Array.Empty<PgQuerySplitStmt>();
 
         var stmts = new PgQuerySplitStmt[result.n_stmts];
         int ptrSize = Marshal.SizeOf<IntPtr>();
-        for (int i = 0; i < result.n_stmts; i++)
-        {
+        for (int i = 0; i < result.n_stmts; i++) {
             IntPtr stmtPtr = Marshal.ReadIntPtr(result.stmts, i * ptrSize);
             stmts[i] = Marshal.PtrToStructure<PgQuerySplitStmt>(stmtPtr);
         }
