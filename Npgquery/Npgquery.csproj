@@ -1,27 +1,33 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageId>NpgqueryLib</PackageId>
-    <PackageVersion>1.0.0</PackageVersion>
-    <Authors>Your Name</Authors>
-    <Description>A .NET 9 C# library for parsing PostgreSQL queries using libpg_query</Description>
-    <PackageTags>postgresql;sql;parser;ast;query</PackageTags>
-    <RepositoryUrl>https://github.com/yourusername/NpgqueryLib</RepositoryUrl>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net9.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<PackageId>NpgqueryLib</PackageId>
+		<PackageVersion>1.0.0</PackageVersion>
+		<Authors>Your Name</Authors>
+		<Description>A .NET 9 C# library for parsing PostgreSQL queries using libpg_query</Description>
+		<PackageTags>postgresql;sql;parser;ast;query</PackageTags>
+		<RepositoryUrl>https://github.com/yourusername/NpgqueryLib</RepositoryUrl>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="System.Text.Json" Version="9.0.0" />
-    <PackageReference Include="System.Memory" Version="4.5.5" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Google.Protobuf" Version="3.31.1" />
+		<PackageReference Include="Grpc.Tools" Version="2.59.0" PrivateAssets="All" />
+		<PackageReference Include="System.Text.Json" Version="9.0.0" />
+		<PackageReference Include="System.Memory" Version="4.5.5" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <None Include="runtimes\**\*" Pack="true" PackagePath="runtimes\" />
-  </ItemGroup>
+	<ItemGroup>
+		<None Include="runtimes\**\*" Pack="true" PackagePath="runtimes\" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Protobuf Include="Protos\pg_query.proto" GrpcServices="Client" />
+	</ItemGroup>
 
 </Project>

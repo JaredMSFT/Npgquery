@@ -345,19 +345,35 @@ class Program
         Console.WriteLine("B. Query Tokenization:");
         var query = "SELECT COUNT(*) FROM users WHERE created_at > '2023-01-01'";
         var scanResult = parser.Scan(query);
+        
+        Console.WriteLine($"Query: {query}");
+        Console.WriteLine($"Scan successful: {scanResult.IsSuccess}");
+        
         if (scanResult.IsSuccess && scanResult.Tokens != null)
         {
-            Console.WriteLine($"Query: {query}");
+            Console.WriteLine($"PostgreSQL Version: {scanResult.Version}");
             Console.WriteLine($"Found {scanResult.Tokens.Length} tokens:");
+            
             foreach (var token in scanResult.Tokens.Take(10)) // Show first 10 tokens
             {
-                Console.WriteLine($"  Token {token.Token}: {token.KeywordKind ?? "N/A"} (pos {token.Start}-{token.End})");
+                Console.WriteLine($"  '{token.Text}' -> {token.TokenKind} ({token.KeywordKind}) at position {token.Start}-{token.End}");
             }
+            
             if (scanResult.Tokens.Length > 10)
             {
                 Console.WriteLine($"  ... and {scanResult.Tokens.Length - 10} more tokens");
             }
         }
+        else if (scanResult.IsError)
+        {
+            Console.WriteLine($"Scan failed: {scanResult.Error}");
+        }
+        
+        if (!string.IsNullOrEmpty(scanResult.Stderr))
+        {
+            Console.WriteLine($"Stderr: {scanResult.Stderr}");
+        }
+        
         Console.WriteLine();
 
         // Round-trip example (parse then deparse)

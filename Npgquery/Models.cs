@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using NpgqueryLib.Protobuf;
 
 namespace NpgqueryLib;
 
@@ -233,13 +234,19 @@ public sealed record SplitResult
 public sealed record SqlToken
 {
     /// <summary>
-    /// Token type
+    /// Token type (numeric identifier)
     /// </summary>
     [JsonPropertyName("token")]
     public int Token { get; init; }
 
     /// <summary>
-    /// Token keyword (if applicable)
+    /// Token type name (e.g., "SELECT", "IDENT", etc.)
+    /// </summary>
+    [JsonPropertyName("token_kind")]
+    public string? TokenKind { get; init; }
+
+    /// <summary>
+    /// Keyword kind (e.g., "RESERVED_KEYWORD", "UNRESERVED_KEYWORD", etc.)
     /// </summary>
     [JsonPropertyName("keyword_kind")]
     public string? KeywordKind { get; init; }
@@ -255,24 +262,41 @@ public sealed record SqlToken
     /// </summary>
     [JsonPropertyName("end")]
     public int End { get; init; }
+
+    /// <summary>
+    /// The actual text of the token
+    /// </summary>
+    [JsonPropertyName("text")]
+    public string? Text { get; init; }
 }
 
 /// <summary>
 /// Represents the result of scanning/tokenizing a PostgreSQL query
 /// </summary>
-public sealed record ScanResult
-{
+public sealed record ScanResult {
     /// <summary>
-    /// The individual tokens
+    /// The PostgreSQL version number
+    /// </summary>
+    [JsonPropertyName("version")]
+    public int? Version { get; init; }
+
+    /// <summary>
+    /// The tokens found in the query
     /// </summary>
     [JsonPropertyName("tokens")]
     public SqlToken[]? Tokens { get; init; }
 
     /// <summary>
-    /// Any error that occurred during scanning
+    /// Error message if scanning failed, or null if successful
     /// </summary>
     [JsonPropertyName("error")]
     public string? Error { get; init; }
+
+    /// <summary>
+    /// Standard error output from the scanner
+    /// </summary>
+    [JsonPropertyName("stderr")]
+    public string? Stderr { get; init; }
 
     /// <summary>
     /// The original query that was scanned
@@ -281,13 +305,13 @@ public sealed record ScanResult
     public string Query { get; init; } = string.Empty;
 
     /// <summary>
-    /// Indicates whether scanning was successful
+    /// Whether the scanning was successful
     /// </summary>
     [JsonIgnore]
     public bool IsSuccess => string.IsNullOrEmpty(Error);
 
     /// <summary>
-    /// Indicates whether scanning failed
+    /// Whether the scanning failed
     /// </summary>
     [JsonIgnore]
     public bool IsError => !IsSuccess;
@@ -327,4 +351,68 @@ public sealed record PlpgsqlParseResult
     /// </summary>
     [JsonIgnore]
     public bool IsError => !IsSuccess;
+}
+
+/// <summary>
+/// Enhanced scan result that includes both processed tokens and raw protobuf data
+/// </summary>
+public sealed record EnhancedScanResult {
+    /// <summary>
+    /// The PostgreSQL version number
+    /// </summary>
+    [JsonPropertyName("version")]
+    public int? Version { get; init; }
+
+    /// <summary>
+    /// The tokens found in the query
+    /// </summary>
+    [JsonPropertyName("tokens")]
+    public SqlToken[]? Tokens { get; init; }
+
+    /// <summary>
+    /// Error message if scanning failed, or null if successful
+    /// </summary>
+    [JsonPropertyName("error")]
+    public string? Error { get; init; }
+
+    /// <summary>
+    /// Standard error output from the scanner
+    /// </summary>
+    [JsonPropertyName("stderr")]
+    public string? Stderr { get; init; }
+
+    /// <summary>
+    /// The original query that was scanned
+    /// </summary>
+    [JsonPropertyName("query")]
+    public string Query { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Raw protobuf scan result for advanced processing
+    /// </summary>
+    [JsonIgnore]
+    public PgQuery.ScanResult? ProtobufScanResult { get; init; }
+
+    /// <summary>
+    /// Whether the scanning was successful
+    /// </summary>
+    [JsonIgnore]
+    public bool IsSuccess => string.IsNullOrEmpty(Error);
+
+    /// <summary>
+    /// Whether the scanning failed
+    /// </summary>
+    [JsonIgnore]
+    public bool IsError => !IsSuccess;
+
+    /// <summary>
+    /// Convert the protobuf scan result to JSON
+    /// </summary>
+    /// <param name="formatted">Whether to format the JSON with indentation</param>
+    /// <returns>JSON representation of the scan result</returns>
+    public string? ToProtobufJson(bool formatted = false) {
+        return ProtobufScanResult != null 
+            ? ProtobufAstHelper.ToJson(ProtobufScanResult, formatted) 
+            : null;
+    }
 }

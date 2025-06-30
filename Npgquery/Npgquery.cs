@@ -308,23 +308,14 @@ public sealed class Npgquery : IDisposable {
             var result = NativeMethods.pg_query_scan(inputBytes);
 
             try {
-                var tokensJson = NativeMethods.PtrToString(result.tokens);
-                var error = NativeMethods.PtrToString(result.error);
-
-                SqlToken[]? tokens = null;
-                if (!string.IsNullOrEmpty(tokensJson)) {
-                    try {
-                        tokens = JsonSerializer.Deserialize<SqlToken[]>(tokensJson, JsonOptions);
-                    }
-                    catch {
-                        // Ignore JSON deserialization errors
-                    }
-                }
-
+                var processed = NativeMethods.ProcessScanResult(result, query);
+                
                 return new ScanResult {
                     Query = query,
-                    Tokens = tokens,
-                    Error = error
+                    Version = processed.Version,
+                    Tokens = processed.Tokens,
+                    Error = processed.Error,
+                    Stderr = processed.Stderr
                 };
             }
             finally {
@@ -333,6 +324,57 @@ public sealed class Npgquery : IDisposable {
         }
         catch (Exception ex) {
             return new ScanResult {
+                Query = query,
+                Error = $"Native library error: {ex.Message}"
+            };
+        }
+    }
+
+    /// <summary>
+    /// Scan/tokenize a PostgreSQL query with enhanced protobuf support
+    /// </summary>
+    /// <param name="query">The SQL query to scan</param>
+    /// <returns>Enhanced scan result with protobuf data</returns>
+    /// <exception cref="ArgumentNullException">Thrown when query is null</exception>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed</exception>
+    public EnhancedScanResult ScanWithProtobuf(string query) {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(query);
+
+        try {
+            var inputBytes = NativeMethods.StringToUtf8Bytes(query);
+            var result = NativeMethods.pg_query_scan(inputBytes);
+
+            try {
+                var processed = NativeMethods.ProcessScanResult(result, query);
+                
+                // Also extract the raw protobuf data if available
+                PgQuery.ScanResult? protobufResult = null;
+                if (result.pbuf.data != IntPtr.Zero && result.pbuf.len != UIntPtr.Zero) {
+                    try {
+                        var protobufData = ProtobufHelper.ExtractProtobufData(result.pbuf);
+                        protobufResult = PgQuery.ScanResult.Parser.ParseFrom(protobufData);
+                    }
+                    catch {
+                        // Ignore protobuf parsing errors for the enhanced result
+                    }
+                }
+                
+                return new EnhancedScanResult {
+                    Query = query,
+                    Version = processed.Version,
+                    Tokens = processed.Tokens,
+                    Error = processed.Error,
+                    Stderr = processed.Stderr,
+                    ProtobufScanResult = protobufResult
+                };
+            }
+            finally {
+                NativeMethods.pg_query_free_scan_result(result);
+            }
+        }
+        catch (Exception ex) {
+            return new EnhancedScanResult {
                 Query = query,
                 Error = $"Native library error: {ex.Message}"
             };
@@ -414,5 +456,15 @@ public sealed class Npgquery : IDisposable {
     public static PlpgsqlParseResult QuickParsePlpgsql(string plpgsqlCode) {
         using var parser = new Npgquery();
         return parser.ParsePlpgsql(plpgsqlCode);
+    }
+
+    /// <summary>
+    /// Static factory method for quick one-off enhanced scanning with protobuf
+    /// </summary>
+    /// <param name="query">The SQL query to scan</param>
+    /// <returns>Enhanced scan result</returns>
+    public static EnhancedScanResult QuickScanWithProtobuf(string query) {
+        using var parser = new Npgquery();
+        return parser.ScanWithProtobuf(query);
     }
 }

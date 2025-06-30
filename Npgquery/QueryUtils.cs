@@ -133,15 +133,30 @@ public static class QueryUtils
     /// <returns>List of tokens</returns>
     public static List<SqlToken> GetTokens(string query)
     {
+        var ret = new List<SqlToken>();
         var result = Npgquery.QuickScan(query);
-        if (result.IsError || result.Tokens == null)
+        if (!result.IsSuccess || result.Tokens == null)
         {
             return new List<SqlToken>();
         }
 
+        return ret;
+    }
+/*
+    /// <summary>
+    /// Get all token strings from a PostgreSQL query
+    /// </summary>
+    /// <param name="query">The SQL query to tokenize</param>
+    /// <returns>List of tokens</returns>
+    public static List<string> GetTokens(string query) {
+        var result = Npgquery.QuickScan(query);
+        if (!result.IsSuccess || result.Tokens == null) {
+            return new List<string>();
+        }
+
         return result.Tokens.ToList();
     }
-
+*/
     /// <summary>
     /// Get all keywords from a PostgreSQL query
     /// </summary>

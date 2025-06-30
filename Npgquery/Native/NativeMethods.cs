@@ -68,12 +68,19 @@ internal static unsafe class NativeMethods {
         public IntPtr error;
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct PgQueryProtobuf {
+        public UIntPtr len;   // Use UIntPtr for size_t portability
+        public IntPtr data;   // Pointer to the protobuf data buffer
+    }
+
     /// <summary>
     /// Scan result structure from libpg_query
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal struct PgQueryScanResult {
-        public IntPtr tokens;
+        public PgQueryProtobuf pbuf;
+        public IntPtr stderr_buffer;
         public IntPtr error;
     }
 
@@ -84,6 +91,16 @@ internal static unsafe class NativeMethods {
     internal struct PgQueryPlpgsqlParseResult {
         public IntPtr tree;
         public IntPtr error;
+    }
+
+    /// <summary>
+    /// Internal structure for processed scan results
+    /// </summary>
+    internal struct ProcessedScanResult {
+        public int? Version { get; set; }
+        public SqlToken[]? Tokens { get; set; }
+        public string? Error { get; set; }
+        public string? Stderr { get; set; }
     }
 
     /// <summary>
@@ -208,4 +225,41 @@ internal static unsafe class NativeMethods {
         return stmts;
     }
 
+    /// <summary>
+    /// Helper to process scan results from protobuf data
+    /// </summary>
+    internal static ProcessedScanResult ProcessScanResult(PgQueryScanResult nativeResult, string originalQuery) {
+        // Handle error case
+        if (nativeResult.error != IntPtr.Zero) {
+            return new ProcessedScanResult {
+                Error = PtrToString(nativeResult.error),
+                Stderr = PtrToString(nativeResult.stderr_buffer)
+            };
+        }
+
+        // Handle stderr buffer
+        var stderr = PtrToString(nativeResult.stderr_buffer);
+
+        // Process protobuf data if available
+        if (nativeResult.pbuf.data != IntPtr.Zero && nativeResult.pbuf.len != UIntPtr.Zero) {
+            try {
+                var protobufData = ProtobufHelper.ExtractProtobufData(nativeResult.pbuf);
+                var result = ProtobufHelper.DeserializeScanResult(protobufData, originalQuery);
+                result.Stderr = stderr;
+                return result;
+            }
+            catch (Exception ex) {
+                return new ProcessedScanResult {
+                    Error = $"Failed to process protobuf data: {ex.Message}",
+                    Stderr = stderr
+                };
+            }
+        }
+        else {
+            return new ProcessedScanResult {
+                Error = "No protobuf data available",
+                Stderr = stderr
+            };
+        }
+    }
 }
