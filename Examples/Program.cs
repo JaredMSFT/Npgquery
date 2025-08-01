@@ -52,7 +52,7 @@ class Program
             
             if (result.IsSuccess)
             {
-                Console.WriteLine($"Parse Tree Length: {result.ParseTree?.Length ?? 0} characters");
+                Console.WriteLine($"Parse Tree Length: {result.ParseTree?.RootElement.ToString().Length ?? 0} characters");
             }
             else
             {
@@ -382,7 +382,7 @@ class Program
         Console.WriteLine($"Original: {originalQuery}");
 
         var parseResult = parser.Parse(originalQuery);
-        if (parseResult.IsSuccess && !string.IsNullOrEmpty(parseResult.ParseTree))
+        if (parseResult.IsSuccess && parseResult.ParseTree is not null)
         {
             var deparseResult = parser.Deparse(parseResult.ParseTree);
             if (deparseResult.IsSuccess)

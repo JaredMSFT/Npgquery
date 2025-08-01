@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using NpgqueryLib.Protobuf;
 
@@ -9,10 +10,10 @@ namespace NpgqueryLib;
 public sealed record ParseResult
 {
     /// <summary>
-    /// The parsed query as a JSON string representing the parse tree
+    /// The parsed query as a JSON document representing the parse tree
     /// </summary>
     [JsonPropertyName("parse_tree")]
-    public string? ParseTree { get; init; }
+    public JsonDocument? ParseTree { get; init; }
 
     /// <summary>
     /// Any error that occurred during parsing

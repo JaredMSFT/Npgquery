@@ -229,7 +229,7 @@ public class NpgqueryExtendedTests : IDisposable
         var parseResult = _parser.Parse(query);
         Assert.True(parseResult.IsSuccess);
 
-        if (!string.IsNullOrEmpty(parseResult.ParseTree))
+        if (parseResult.ParseTree is not null)
         {
             var deparseResult = _parser.Deparse(parseResult.ParseTree);
             // Deparse might not always succeed depending on libpg_query support

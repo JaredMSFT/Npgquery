@@ -16,7 +16,7 @@ public static class QueryUtils
     public static List<string> ExtractTableNames(string query)
     {
         var result = Npgquery.QuickParse(query);
-        if (result.IsError || string.IsNullOrEmpty(result.ParseTree))
+        if (result.IsError || result.ParseTree is null)
         {
             return new List<string>();
         }
@@ -24,7 +24,7 @@ public static class QueryUtils
         try
         {
             var tables = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            ExtractTablesFromJson(JsonDocument.Parse(result.ParseTree).RootElement, tables);
+            ExtractTablesFromJson(result.ParseTree.RootElement, tables);
             return tables.ToList();
         }
         catch
@@ -56,14 +56,14 @@ public static class QueryUtils
     public static string? GetQueryType(string query)
     {
         var result = Npgquery.QuickParse(query);
-        if (result.IsError || string.IsNullOrEmpty(result.ParseTree))
+        if (result.IsError || result.ParseTree is null)
         {
             return null;
         }
 
         try
         {
-            var doc = JsonDocument.Parse(result.ParseTree);
+            var doc = result.ParseTree;
             return ExtractQueryTypeFromJson(doc.RootElement);
         }
         catch
@@ -133,14 +133,13 @@ public static class QueryUtils
     /// <returns>List of tokens</returns>
     public static List<SqlToken> GetTokens(string query)
     {
-        var ret = new List<SqlToken>();
         var result = Npgquery.QuickScan(query);
         if (!result.IsSuccess || result.Tokens == null)
         {
             return new List<SqlToken>();
         }
 
-        return ret;
+        return result.Tokens.ToList();
     }
 /*
     /// <summary>
@@ -177,7 +176,7 @@ public static class QueryUtils
     /// </summary>
     /// <param name="parseTree">The AST JSON string</param>
     /// <returns>Deparsed SQL query or null if failed</returns>
-    public static string? AstToSql(string parseTree)
+    public static string? AstToSql(JsonDocument parseTree)
     {
         var result = Npgquery.QuickDeparse(parseTree);
         return result.IsSuccess ? result.Query : null;
@@ -191,7 +190,7 @@ public static class QueryUtils
     public static (bool Success, string? RoundTripQuery) RoundTripTest(string query)
     {
         var parseResult = Npgquery.QuickParse(query);
-        if (parseResult.IsError || string.IsNullOrEmpty(parseResult.ParseTree))
+        if (parseResult.IsError || parseResult.ParseTree is null)
         {
             return (false, null);
         }

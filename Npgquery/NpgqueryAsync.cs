@@ -159,7 +159,7 @@ public static class NpgqueryAsync
     /// <param name="parseTree">The AST JSON string to deparse</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Deparse result containing the SQL query or error information</returns>
-    public static Task<DeparseResult> DeparseAsync(this Npgquery parser, string parseTree, 
+    public static Task<DeparseResult> DeparseAsync(this Npgquery parser, JsonDocument parseTree, 
         CancellationToken cancellationToken = default)
     {
         return Task.Run(() => parser.Deparse(parseTree), cancellationToken);
@@ -210,7 +210,7 @@ public static class NpgqueryAsync
     /// <param name="parseTree">The AST JSON to deparse</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Deparse result</returns>
-    public static async Task<DeparseResult> QuickDeparseAsync(string parseTree, 
+    public static async Task<DeparseResult> QuickDeparseAsync(JsonDocument parseTree, 
         CancellationToken cancellationToken = default)
     {
         using var parser = new Npgquery();

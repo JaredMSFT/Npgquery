@@ -1,5 +1,6 @@
-﻿using System.Text.Json;
-using NpgqueryLib.Native;
+﻿using NpgqueryLib.Native;
+using System.Text.Json;
+using static NpgqueryLib.Native.NativeMethods;
 
 namespace NpgqueryLib;
 
@@ -22,35 +23,71 @@ public sealed class Npgquery : IDisposable {
     /// <returns>Parse result containing the AST or error information</returns>
     /// <exception cref="ArgumentNullException">Thrown when query is null</exception>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed</exception>
-    public ParseResult Parse(string query, ParseOptions? options = null) {
-        ObjectDisposedException.ThrowIf(_disposed, this);
-        ArgumentNullException.ThrowIfNull(query);
-
-        options ??= ParseOptions.Default;
-
-        try {
+    public ParseResult Parse(string query, ParseOptions? options = null)
+    {
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(Npgquery));
+        
+        if (query == null)
+            throw new ArgumentNullException(nameof(query));
+        
+        NativeMethods.PgQueryResult nativeResult = default;
+        try
+        {
+            // Call native parse function
             var inputBytes = NativeMethods.StringToUtf8Bytes(query);
-            var result = NativeMethods.pg_query_parse(inputBytes);
-
-            try {
-                var parseTree = NativeMethods.PtrToString(result.tree);
-                var error = NativeMethods.PtrToString(result.error);
-
-                return new ParseResult {
+            nativeResult = NativeMethods.pg_query_parse(inputBytes);
+            
+            // Check if there's an error
+            if (nativeResult.error != IntPtr.Zero)
+            {
+                // Marshal the error struct
+                var error = NativeMethods.MarshalError(nativeResult.error);
+                string errorMessage = "Parse error";
+                
+                if (error?.message != IntPtr.Zero)
+                {
+                    errorMessage = NativeMethods.PtrToString(error.Value.message) ?? "Parse error";
+                }
+                
+                return new ParseResult 
+                { 
                     Query = query,
-                    ParseTree = parseTree,
-                    Error = error
+                    Error = errorMessage,
+                    ParseTree = null
                 };
             }
-            finally {
-                NativeMethods.pg_query_free_parse_result(result);
+            
+            // If no error, get the parse tree
+            if (nativeResult.tree != IntPtr.Zero)
+            {
+                var parseTreeJson = NativeMethods.PtrToString(nativeResult.tree);
+                
+                if (!string.IsNullOrEmpty(parseTreeJson))
+                {
+                    // Deserialize the parse tree JSON
+                    var parseTree = JsonDocument.Parse(parseTreeJson);
+                    
+                    return new ParseResult 
+                    { 
+                        Query = query,
+                        ParseTree = parseTree,
+                        Error = null
+                    };
+                }
             }
-        }
-        catch (Exception ex) {
-            return new ParseResult {
+            
+            // Fallback if no parse tree and no error
+            return new ParseResult 
+            { 
                 Query = query,
-                Error = $"Native library error: {ex.Message}"
+                Error = "Failed to parse query: no result from parser"
             };
+        }
+        finally
+        {
+            // Always free the native result
+            NativeMethods.pg_query_free_parse_result(nativeResult);
         }
     }
 
@@ -137,12 +174,12 @@ public sealed class Npgquery : IDisposable {
     /// <returns>Parsed AST as the specified type, or null if parsing failed</returns>
     public T? ParseAs<T>(string query, ParseOptions? options = null) where T : class {
         var result = Parse(query, options);
-        if (result.IsError || string.IsNullOrEmpty(result.ParseTree)) {
+        if (result.IsError || result.ParseTree is null) {
             return null;
         }
 
         try {
-            return JsonSerializer.Deserialize<T>(result.ParseTree, JsonOptions);
+            return result.ParseTree as T;
         }
         catch {
             return null;
@@ -214,12 +251,12 @@ public sealed class Npgquery : IDisposable {
     /// <returns>Deparse result containing the SQL query or error information</returns>
     /// <exception cref="ArgumentNullException">Thrown when parseTree is null</exception>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed</exception>
-    public DeparseResult Deparse(string parseTree) {
+    public DeparseResult Deparse(JsonDocument parseTree) {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(parseTree);
 
         try {
-            var inputBytes = NativeMethods.StringToUtf8Bytes(parseTree);
+            var inputBytes = NativeMethods.StringToUtf8Bytes(parseTree.RootElement.ToString());
             var result = NativeMethods.pg_query_deparse(inputBytes);
 
             try {
@@ -227,7 +264,7 @@ public sealed class Npgquery : IDisposable {
                 var error = NativeMethods.PtrToString(result.error);
 
                 return new DeparseResult {
-                    Ast = parseTree,
+                    Ast = parseTree.RootElement.ToString(),
                     Query = query,
                     Error = error
                 };
@@ -238,7 +275,7 @@ public sealed class Npgquery : IDisposable {
         }
         catch (Exception ex) {
             return new DeparseResult {
-                Ast = parseTree,
+                Ast = parseTree.RootElement.ToString(),
                 Error = $"Native library error: {ex.Message}"
             };
         }
@@ -423,7 +460,7 @@ public sealed class Npgquery : IDisposable {
     /// </summary>
     /// <param name="parseTree">The AST JSON to deparse</param>
     /// <returns>Deparse result</returns>
-    public static DeparseResult QuickDeparse(string parseTree) {
+    public static DeparseResult QuickDeparse(JsonDocument parseTree) {
         using var parser = new Npgquery();
         return parser.Deparse(parseTree);
     }
