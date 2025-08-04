@@ -1,8 +1,5 @@
-using Google.Protobuf;
 using PgQuery;
 using System.Runtime.InteropServices;
-using static NpgqueryLib.Native.NativeMethods;
-
 namespace NpgqueryLib.Native;
 
 /// <summary>
@@ -111,7 +108,7 @@ internal static class ProtobufHelper
     /// </summary>
     /// <param name="protobuf">Native protobuf structure</param>
     /// <returns>Byte array containing protobuf data</returns>
-    internal static byte[] ExtractProtobufData(NativeMethods.PgQueryProtobuf protobuf)
+    internal static byte[] ExtractProtobufData(PgQueryProtobuf protobuf)
     {
         if (protobuf.data == IntPtr.Zero || protobuf.len == UIntPtr.Zero)
         {

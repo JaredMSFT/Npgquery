@@ -80,12 +80,6 @@ internal static unsafe class NativeMethods {
         public IntPtr error;
     }
 
-    [StructLayout(LayoutKind.Sequential)]
-    internal struct PgQueryProtobuf {
-        public UIntPtr len;
-        public IntPtr data;
-    }
-
     /// <summary>
     /// Scan result structure from libpg_query
     /// </summary>
@@ -125,6 +119,9 @@ internal static unsafe class NativeMethods {
     internal static extern PgQueryDeparseResult pg_query_deparse(byte[] input);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern PgQueryDeparseResult pg_query_deparse_protobuf(PgQueryProtobuf parseTree);
+
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
     internal static extern PgQuerySplitResult pg_query_split_with_parser(byte[] input);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
@@ -135,6 +132,9 @@ internal static unsafe class NativeMethods {
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
     internal static extern PgQueryPlpgsqlParseResult pg_query_parse_plpgsql(byte[] input);
+
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern PgQueryProtobufParseResult pg_query_parse_protobuf(byte[] input);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
     internal static extern void pg_query_free_parse_result(PgQueryResult result);
@@ -156,6 +156,9 @@ internal static unsafe class NativeMethods {
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
     internal static extern void pg_query_free_plpgsql_parse_result(PgQueryPlpgsqlParseResult result);
+
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void pg_query_free_protobuf_parse_result(PgQueryProtobufParseResult result);
 
     internal static string? PtrToString(IntPtr ptr) {
         return ptr == IntPtr.Zero ? null : Marshal.PtrToStringUTF8(ptr);
@@ -190,8 +193,16 @@ internal static unsafe class NativeMethods {
 
     internal static ProcessedScanResult ProcessScanResult(PgQueryScanResult nativeResult, string originalQuery) {
         if (nativeResult.error != IntPtr.Zero) {
+            // Use MarshalError for proper error handling
+            string? errorMessage = null;
+            var errorStruct = MarshalError(nativeResult.error);
+            if (errorStruct?.message != IntPtr.Zero)
+            {
+                errorMessage = PtrToString(errorStruct.Value.message);
+            }
+            
             return new ProcessedScanResult {
-                Error = PtrToString(nativeResult.error),
+                Error = errorMessage ?? "Scan error",
                 Stderr = PtrToString(nativeResult.stderr_buffer)
             };
         }
@@ -217,6 +228,31 @@ internal static unsafe class NativeMethods {
                 Error = "No protobuf data available",
                 Stderr = stderr
             };
+        }
+    }
+
+    /// <summary>
+    /// Allocates unmanaged memory for a PgQueryProtobuf from a byte array
+    /// </summary>
+    internal static PgQueryProtobuf AllocPgQueryProtobuf(byte[] protoBytes)
+    {
+        var protoStruct = new PgQueryProtobuf
+        {
+            len = (UIntPtr)protoBytes.Length,
+            data = System.Runtime.InteropServices.Marshal.AllocHGlobal(protoBytes.Length)
+        };
+        System.Runtime.InteropServices.Marshal.Copy(protoBytes, 0, protoStruct.data, protoBytes.Length);
+        return protoStruct;
+    }
+
+    /// <summary>
+    /// Frees unmanaged memory for a PgQueryProtobuf
+    /// </summary>
+    internal static void FreePgQueryProtobuf(PgQueryProtobuf protoStruct)
+    {
+        if (protoStruct.data != IntPtr.Zero)
+        {
+            System.Runtime.InteropServices.Marshal.FreeHGlobal(protoStruct.data);
         }
     }
 }

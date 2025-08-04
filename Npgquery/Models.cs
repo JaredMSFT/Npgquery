@@ -1,8 +1,28 @@
+using System;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using NpgqueryLib.Protobuf;
 
 namespace NpgqueryLib;
+
+/// <summary>
+/// Native protobuf structure for libpg_query
+/// </summary>
+[StructLayout(LayoutKind.Sequential)]
+public struct PgQueryProtobuf {
+    public UIntPtr len;
+    public IntPtr data;
+}
+
+/// <summary>
+/// Native protobuf parse result structure for libpg_query
+/// </summary>
+[StructLayout(LayoutKind.Sequential)]
+public struct PgQueryProtobufParseResult {
+    public PgQueryProtobuf parse_tree;
+    public IntPtr error;
+}
 
 /// <summary>
 /// Represents the result of parsing a PostgreSQL query
@@ -416,4 +436,40 @@ public sealed record EnhancedScanResult {
             ? ProtobufAstHelper.ToJson(ProtobufScanResult, formatted) 
             : null;
     }
+}
+
+/// <summary>
+/// Represents the result of parsing a PostgreSQL query to protobuf format
+/// </summary>
+public sealed record ProtobufParseResult
+{
+    /// <summary>
+    /// The original query that was parsed
+    /// </summary>
+    public string Query { get; init; } = "";
+    
+    /// <summary>
+    /// The protobuf parse tree (for internal use)
+    /// </summary>
+    internal PgQueryProtobuf? ParseTree { get; init; }
+    
+    /// <summary>
+    /// The native result (for cleanup)
+    /// </summary>
+    internal PgQueryProtobufParseResult? NativeResult { get; init; }
+    
+    /// <summary>
+    /// Any error that occurred during parsing
+    /// </summary>
+    public string? Error { get; init; }
+    
+    /// <summary>
+    /// Indicates whether parsing was successful
+    /// </summary>
+    public bool IsSuccess => Error == null;
+    
+    /// <summary>
+    /// Indicates whether parsing failed
+    /// </summary>
+    public bool IsError => Error != null;
 }

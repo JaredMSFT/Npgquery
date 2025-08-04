@@ -1,7 +1,8 @@
-using System;
-using System.Collections.Generic;
-using Xunit;
+using System.Text.Json;
+using Google.Protobuf;
 using NpgqueryLib;
+using PgQuery;
+using Xunit;
 
 namespace NpgqueryLib.Tests;
 
@@ -274,4 +275,136 @@ public class QueryUtilsTests
         Assert.False(results["INVALID SQL"]);
         Assert.True(results["SELECT 2"]);
     }
+
+    [Fact]
+    public void Parse_SerializeToProtobuf_And_Deparse() {
+        // Arrange
+        using var parser = new Npgquery();
+        const string query = "SELECT id, name FROM users WHERE active = true";
+
+        // Act
+        // Step 1: Parse the SQL query to get the parse tree
+        var parseResult = parser.Parse(query);
+        Assert.True(parseResult.IsSuccess);
+        Assert.NotNull(parseResult.ParseTree);
+
+        // Step 2: Convert JSON parse tree to protobuf
+        var parseTreeJson = parseResult.ParseTree.RootElement.GetRawText();
+
+        // Create a ParseResult protobuf message
+        var protoParseResult = new PgQuery.ParseResult();
+
+        // Parse the JSON to populate the protobuf structure
+        // This is a simplified example - you'll need to map the JSON structure to protobuf
+        var jsonDoc = JsonDocument.Parse(parseTreeJson);
+
+        if (jsonDoc.RootElement.TryGetProperty("stmts", out var stmtsElement)) {
+            foreach (var stmtElement in stmtsElement.EnumerateArray()) {
+                var rawStmt = new RawStmt();
+
+                // Map the SELECT statement
+                if (stmtElement.TryGetProperty("stmt", out var stmt) &&
+                    stmt.TryGetProperty("SelectStmt", out var selectStmt)) {
+                    var selectNode = new SelectStmt();
+
+                    // Map target list (SELECT columns)
+                    if (selectStmt.TryGetProperty("targetList", out var targetList)) {
+                        foreach (var target in targetList.EnumerateArray()) {
+                            var resTarget = new ResTarget();
+                            if (target.TryGetProperty("ResTarget", out var resTargetJson)) {
+                                if (resTargetJson.TryGetProperty("name", out var name)) {
+                                    resTarget.Name = name.GetString();
+                                }
+                            }
+                            selectNode.TargetList.Add(new Node { ResTarget = resTarget });
+                        }
+                    }
+
+                    // Map FROM clause
+                    if (selectStmt.TryGetProperty("fromClause", out var fromClause)) {
+                        foreach (var from in fromClause.EnumerateArray()) {
+                            if (from.TryGetProperty("RangeVar", out var rangeVar)) {
+                                var rangeVarNode = new RangeVar();
+                                if (rangeVar.TryGetProperty("relname", out var relname)) {
+                                    rangeVarNode.Relname = relname.GetString();
+                                }
+                                selectNode.FromClause.Add(new Node { RangeVar = rangeVarNode });
+                            }
+                        }
+                    }
+
+                    rawStmt.Stmt = new Node { SelectStmt = selectNode };
+                }
+
+                protoParseResult.Stmts.Add(rawStmt);
+            }
+        }
+
+        // Step 3: Serialize to protobuf bytes
+        var protobufBytes = protoParseResult.ToByteArray();
+
+        // Step 4: Deserialize back (to verify serialization worked)
+        var deserializedProto = PgQuery.ParseResult.Parser.ParseFrom(protobufBytes);
+
+        // Step 5: Convert protobuf back to JSON for deparse
+        var protoJson = JsonFormatter.Default.Format(deserializedProto);
+        var protoJsonDoc = JsonDocument.Parse(protoJson);
+
+        // Step 6: Call deparse with the protobuf-based parse tree
+        var deparseResult = parser.Deparse(protoJsonDoc);
+
+        // Assert
+        Assert.True(deparseResult.IsSuccess);
+        Assert.NotNull(deparseResult.Query);
+        Assert.Contains("SELECT", deparseResult.Query);
+        Assert.Contains("users", deparseResult.Query);
+    }
+
+    [Fact]
+    public void SimpleSelect_RoundTrip_Through_Protobuf() {
+        // Arrange
+        using var parser = new Npgquery();
+        const string query = "SELECT 1";
+
+        // Act
+        var parseResult = parser.Parse(query);
+        Assert.True(parseResult.IsSuccess);
+
+        // For a simple test, we can just verify the parse tree structure
+        var parseTreeJson = parseResult.ParseTree.RootElement.GetRawText();
+
+        // Create a minimal protobuf representation
+        var protoResult = new PgQuery.ParseResult {
+            Version = 160001 // PostgreSQL 16.0.1
+        };
+
+        var rawStmt = new RawStmt();
+        var selectStmt = new SelectStmt();
+
+        // Add a simple integer constant to target list
+        var resTarget = new ResTarget();
+        var aConst = new A_Const();
+        aConst.Ival = new Integer { Ival = 1 };
+        resTarget.Val = new Node { AConst = aConst };
+
+        selectStmt.TargetList.Add(new Node { ResTarget = resTarget });
+        rawStmt.Stmt = new Node { SelectStmt = selectStmt };
+        protoResult.Stmts.Add(rawStmt);
+
+        // Serialize and deserialize
+        var bytes = protoResult.ToByteArray();
+        var deserialized = PgQuery.ParseResult.Parser.ParseFrom(bytes);
+
+        // Convert to JSON for deparse
+        var jsonFormatter = new JsonFormatter(new JsonFormatter.Settings(true));
+        var json = jsonFormatter.Format(deserialized);
+        var jsonDoc = JsonDocument.Parse(json);
+
+        var deparseResult = parser.Deparse(jsonDoc);
+
+        // Assert
+        Assert.True(deparseResult.IsSuccess);
+        Assert.NotNull(deparseResult.Query);
+    }
+
 }

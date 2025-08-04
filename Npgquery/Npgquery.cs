@@ -1,4 +1,6 @@
-﻿using NpgqueryLib.Native;
+﻿using Google.Protobuf;
+using NpgqueryLib.Native;
+using PgQuery;
 using System.Text.Json;
 using static NpgqueryLib.Native.NativeMethods;
 
@@ -38,10 +40,9 @@ public sealed class Npgquery : IDisposable {
             var inputBytes = NativeMethods.StringToUtf8Bytes(query);
             nativeResult = NativeMethods.pg_query_parse(inputBytes);
             
-            // Check if there's an error
+            // Check if there's an error using MarshalError
             if (nativeResult.error != IntPtr.Zero)
             {
-                // Marshal the error struct
                 var error = NativeMethods.MarshalError(nativeResult.error);
                 string errorMessage = "Parse error";
                 
@@ -108,7 +109,17 @@ public sealed class Npgquery : IDisposable {
 
             try {
                 var normalizedQuery = NativeMethods.PtrToString(result.normalized_query);
-                var error = NativeMethods.PtrToString(result.error);
+                
+                // Use MarshalError for proper error handling
+                string? error = null;
+                if (result.error != IntPtr.Zero)
+                {
+                    var errorStruct = NativeMethods.MarshalError(result.error);
+                    if (errorStruct?.message != IntPtr.Zero)
+                    {
+                        error = NativeMethods.PtrToString(errorStruct.Value.message);
+                    }
+                }
 
                 return new NormalizeResult {
                     Query = query,
@@ -145,7 +156,17 @@ public sealed class Npgquery : IDisposable {
 
             try {
                 var fingerprint = NativeMethods.PtrToString(result.fingerprint_str);
-                var error = NativeMethods.PtrToString(result.error);
+                
+                // Use MarshalError for proper error handling
+                string? error = null;
+                if (result.error != IntPtr.Zero)
+                {
+                    var errorStruct = NativeMethods.MarshalError(result.error);
+                    if (errorStruct?.message != IntPtr.Zero)
+                    {
+                        error = NativeMethods.PtrToString(errorStruct.Value.message);
+                    }
+                }
 
                 return new FingerprintResult {
                     Query = query,
@@ -245,43 +266,6 @@ public sealed class Npgquery : IDisposable {
     }
 
     /// <summary>
-    /// Deparse a PostgreSQL AST back to SQL
-    /// </summary>
-    /// <param name="parseTree">The AST JSON string to deparse</param>
-    /// <returns>Deparse result containing the SQL query or error information</returns>
-    /// <exception cref="ArgumentNullException">Thrown when parseTree is null</exception>
-    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed</exception>
-    public DeparseResult Deparse(JsonDocument parseTree) {
-        ObjectDisposedException.ThrowIf(_disposed, this);
-        ArgumentNullException.ThrowIfNull(parseTree);
-
-        try {
-            var inputBytes = NativeMethods.StringToUtf8Bytes(parseTree.RootElement.ToString());
-            var result = NativeMethods.pg_query_deparse(inputBytes);
-
-            try {
-                var query = NativeMethods.PtrToString(result.query);
-                var error = NativeMethods.PtrToString(result.error);
-
-                return new DeparseResult {
-                    Ast = parseTree.RootElement.ToString(),
-                    Query = query,
-                    Error = error
-                };
-            }
-            finally {
-                NativeMethods.pg_query_free_deparse_result(result);
-            }
-        }
-        catch (Exception ex) {
-            return new DeparseResult {
-                Ast = parseTree.RootElement.ToString(),
-                Error = $"Native library error: {ex.Message}"
-            };
-        }
-    }
-
-    /// <summary>
     /// Split a string containing multiple PostgreSQL statements
     /// </summary>
     /// <param name="query">The SQL string containing multiple statements</param>
@@ -298,7 +282,17 @@ public sealed class Npgquery : IDisposable {
 
             try {
                 var stmts = NativeMethods.MarshalSplitStmts(result);
-                var error = NativeMethods.PtrToString(result.error);
+                
+                // Use MarshalError for proper error handling
+                string? error = null;
+                if (result.error != IntPtr.Zero)
+                {
+                    var errorStruct = NativeMethods.MarshalError(result.error);
+                    if (errorStruct?.message != IntPtr.Zero)
+                    {
+                        error = NativeMethods.PtrToString(errorStruct.Value.message);
+                    }
+                }
 
                 var statements = new List<SqlStatement>();
                 foreach (var stmt in stmts) {
@@ -435,7 +429,17 @@ public sealed class Npgquery : IDisposable {
 
             try {
                 var parseTree = NativeMethods.PtrToString(result.tree);
-                var error = NativeMethods.PtrToString(result.error);
+                
+                // Use MarshalError for proper error handling
+                string? error = null;
+                if (result.error != IntPtr.Zero)
+                {
+                    var errorStruct = NativeMethods.MarshalError(result.error);
+                    if (errorStruct?.message != IntPtr.Zero)
+                    {
+                        error = NativeMethods.PtrToString(errorStruct.Value.message);
+                    }
+                }
 
                 return new PlpgsqlParseResult {
                     Query = plpgsqlCode,
@@ -503,5 +507,160 @@ public sealed class Npgquery : IDisposable {
     public static EnhancedScanResult QuickScanWithProtobuf(string query) {
         using var parser = new Npgquery();
         return parser.ScanWithProtobuf(query);
+    }
+
+    /// <summary>
+    /// Deparse a PostgreSQL AST back to SQL
+    /// </summary>
+    /// <param name="parseTree">The AST JSON document to deparse</param>
+    /// <returns>Deparse result containing the SQL query or error information</returns>
+    /// <exception cref="ArgumentNullException">Thrown when parseTree is null</exception>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed</exception>
+    public DeparseResult Deparse(JsonDocument parseTree) {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(parseTree);
+
+        try {
+            // Convert JsonDocument to Protobuf ParseResult
+            var json = parseTree.RootElement.GetRawText();
+            var protoParseResult = NpgqueryLib.Protobuf.ProtobufAstHelper.ParseResultFromJson(json);
+            var protoBytes = protoParseResult.ToByteArray();
+            var protoStruct = NativeMethods.AllocPgQueryProtobuf(protoBytes);
+
+            try {
+                var deparseResult = NativeMethods.pg_query_deparse_protobuf(protoStruct);
+                try {
+                    if (deparseResult.error != IntPtr.Zero) {
+                        var errorStruct = NativeMethods.MarshalError(deparseResult.error);
+                        var errorMessage = errorStruct?.message != IntPtr.Zero
+                            ? NativeMethods.PtrToString(errorStruct.Value.message)
+                            : "Deparse error";
+                        return new DeparseResult {
+                            Ast = parseTree.RootElement.ToString(),
+                            Error = errorMessage
+                        };
+                    }
+                    return new DeparseResult {
+                        Ast = parseTree.RootElement.ToString(),
+                        Query = NativeMethods.PtrToString(deparseResult.query)
+                    };
+                }
+                finally {
+                    NativeMethods.pg_query_free_deparse_result(deparseResult);
+                }
+            }
+            finally {
+                NativeMethods.FreePgQueryProtobuf(protoStruct);
+            }
+        }
+        catch (Exception ex) {
+            return new DeparseResult {
+                Ast = parseTree.RootElement.ToString(),
+                Error = $"Native library error: {ex.Message}"
+            };
+        }
+    }
+
+    /// <summary>
+    /// Parse a PostgreSQL query into protobuf format (for use with Deparse)
+    /// </summary>
+    /// <param name="query">The SQL query to parse</param>
+    /// <returns>Parse result with protobuf data</returns>
+    public ProtobufParseResult ParseProtobuf(string query) {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(query);
+
+        try {
+            var inputBytes = NativeMethods.StringToUtf8Bytes(query);
+            var result = NativeMethods.pg_query_parse_protobuf(inputBytes);
+
+            try {
+                if (result.error != IntPtr.Zero) {
+                    var errorStruct = NativeMethods.MarshalError(result.error);
+                    var errorMessage = errorStruct?.message != IntPtr.Zero
+                        ? NativeMethods.PtrToString(errorStruct.Value.message)
+                        : "Parse error";
+
+                    return new ProtobufParseResult {
+                        Query = query,
+                        Error = errorMessage
+                    };
+                }
+
+                // Keep the parse_tree for deparsing
+                return new ProtobufParseResult {
+                    Query = query,
+                    ParseTree = result.parse_tree,
+                    NativeResult = result
+                };
+            }
+            catch {
+                // Make sure to free on error
+                NativeMethods.pg_query_free_protobuf_parse_result(result);
+                throw;
+            }
+        }
+        catch (Exception ex) {
+            return new ProtobufParseResult {
+                Query = query,
+                Error = $"Native library error: {ex.Message}"
+            };
+        }
+    }
+
+    /// <summary>
+    /// Deparse a PostgreSQL protobuf parse result back to SQL
+    /// </summary>
+    /// <param name="parseResult">The protobuf parse result from ParseProtobuf</param>
+    /// <returns>Deparse result containing the SQL query or error information</returns>
+    public DeparseResult DeparseProtobuf(ProtobufParseResult parseResult) {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(parseResult);
+
+        if (parseResult.IsError || parseResult.ParseTree == null) {
+            return new DeparseResult {
+                Ast = "",
+                Error = "Cannot deparse an error result or null parse tree"
+            };
+        }
+
+        try {
+            // Fix: Use .Value to get the PgQueryProtobuf from the nullable type
+            var deparseResult = NativeMethods.pg_query_deparse_protobuf(parseResult.ParseTree.Value);
+
+            try {
+                if (deparseResult.error != IntPtr.Zero) {
+                    var errorStruct = NativeMethods.MarshalError(deparseResult.error);
+                    var errorMessage = errorStruct?.message != IntPtr.Zero
+                        ? NativeMethods.PtrToString(errorStruct.Value.message)
+                        : "Deparse error";
+
+                    return new DeparseResult {
+                        Ast = "",
+                        Error = errorMessage
+                    };
+                }
+
+                return new DeparseResult {
+                    Ast = "", // We don't have JSON AST in this flow
+                    Query = NativeMethods.PtrToString(deparseResult.query)
+                };
+            }
+            finally {
+                NativeMethods.pg_query_free_deparse_result(deparseResult);
+            }
+        }
+        catch (Exception ex) {
+            return new DeparseResult {
+                Ast = "",
+                Error = $"Native library error: {ex.Message}"
+            };
+        }
+        finally {
+            // Free the protobuf parse result
+            if (parseResult.NativeResult != null) {
+                NativeMethods.pg_query_free_protobuf_parse_result(parseResult.NativeResult.Value);
+            }
+        }
     }
 }
