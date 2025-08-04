@@ -1,21 +1,21 @@
-namespace NpgqueryLib;
+namespace Npgquery;
 
 /// <summary>
-/// Base exception for all Npgquery-related errors
+/// Base exception for all Parser-related errors
 /// </summary>
-public abstract class NpgqueryException : Exception
+public abstract class ParserException : Exception
 {
     /// <summary>
     /// The query that caused the exception (if available)
     /// </summary>
     public string? Query { get; }
 
-    protected NpgqueryException(string message, string? query = null) : base(message)
+    protected ParserException(string message, string? query = null) : base(message)
     {
         Query = query;
     }
 
-    protected NpgqueryException(string message, Exception innerException, string? query = null) 
+    protected ParserException(string message, Exception innerException, string? query = null) 
         : base(message, innerException)
     {
         Query = query;
@@ -25,7 +25,7 @@ public abstract class NpgqueryException : Exception
 /// <summary>
 /// Exception thrown when a PostgreSQL query cannot be parsed
 /// </summary>
-public sealed class ParseException : NpgqueryException
+public sealed class ParseException : ParserException
 {
     /// <summary>
     /// The specific parse error message from libpg_query
@@ -48,7 +48,7 @@ public sealed class ParseException : NpgqueryException
 /// <summary>
 /// Exception thrown when the native libpg_query library cannot be loaded or accessed
 /// </summary>
-public sealed class NativeLibraryException : NpgqueryException
+public sealed class NativeLibraryException : ParserException
 {
     public NativeLibraryException(string message) : base(message)
     {
@@ -62,7 +62,7 @@ public sealed class NativeLibraryException : NpgqueryException
 /// <summary>
 /// Exception thrown when query normalization fails
 /// </summary>
-public sealed class NormalizationException : NpgqueryException
+public sealed class NormalizationException : ParserException
 {
     /// <summary>
     /// The specific normalization error message
@@ -85,7 +85,7 @@ public sealed class NormalizationException : NpgqueryException
 /// <summary>
 /// Exception thrown when query fingerprinting fails
 /// </summary>
-public sealed class FingerprintException : NpgqueryException
+public sealed class FingerprintException : ParserException
 {
     /// <summary>
     /// The specific fingerprinting error message
@@ -106,23 +106,23 @@ public sealed class FingerprintException : NpgqueryException
 }
 
 /// <summary>
-/// Exception thrown when AST deparsing fails
+/// Exception thrown when query deparsing fails
 /// </summary>
-public sealed class DeparseException : NpgqueryException
+public sealed class DeparseException : ParserException
 {
     /// <summary>
-    /// The specific deparsing error message
+    /// The specific deparse error message
     /// </summary>
     public string DeparseError { get; }
 
-    public DeparseException(string deparseError, string? ast = null)
-        : base($"Failed to deparse PostgreSQL AST: {deparseError}", ast)
+    public DeparseException(string deparseError, string? query = null)
+        : base($"Failed to deparse PostgreSQL AST: {deparseError}", query)
     {
         DeparseError = deparseError;
     }
 
-    public DeparseException(string deparseError, Exception innerException, string? ast = null)
-        : base($"Failed to deparse PostgreSQL AST: {deparseError}", innerException, ast)
+    public DeparseException(string deparseError, Exception innerException, string? query = null)
+        : base($"Failed to deparse PostgreSQL AST: {deparseError}", innerException, query)
     {
         DeparseError = deparseError;
     }
@@ -131,33 +131,33 @@ public sealed class DeparseException : NpgqueryException
 /// <summary>
 /// Exception thrown when query splitting fails
 /// </summary>
-public sealed class SplitException : NpgqueryException
+public sealed class SplitException : ParserException
 {
     /// <summary>
-    /// The specific splitting error message
+    /// The specific split error message
     /// </summary>
     public string SplitError { get; }
 
     public SplitException(string splitError, string? query = null)
-        : base($"Failed to split PostgreSQL query: {splitError}", query)
+        : base($"Failed to split PostgreSQL statements: {splitError}", query)
     {
         SplitError = splitError;
     }
 
     public SplitException(string splitError, Exception innerException, string? query = null)
-        : base($"Failed to split PostgreSQL query: {splitError}", innerException, query)
+        : base($"Failed to split PostgreSQL statements: {splitError}", innerException, query)
     {
         SplitError = splitError;
     }
 }
 
 /// <summary>
-/// Exception thrown when query scanning/tokenization fails
+/// Exception thrown when query scanning fails
 /// </summary>
-public sealed class ScanException : NpgqueryException
+public sealed class ScanException : ParserException
 {
     /// <summary>
-    /// The specific scanning error message
+    /// The specific scan error message
     /// </summary>
     public string ScanError { get; }
 
@@ -177,21 +177,21 @@ public sealed class ScanException : NpgqueryException
 /// <summary>
 /// Exception thrown when PL/pgSQL parsing fails
 /// </summary>
-public sealed class PlpgsqlParseException : NpgqueryException
+public sealed class PlpgsqlParseException : ParserException
 {
     /// <summary>
-    /// The specific PL/pgSQL parsing error message
+    /// The specific PL/pgSQL parse error message
     /// </summary>
     public string PlpgsqlParseError { get; }
 
-    public PlpgsqlParseException(string plpgsqlParseError, string? plpgsqlCode = null)
-        : base($"Failed to parse PL/pgSQL code: {plpgsqlParseError}", plpgsqlCode)
+    public PlpgsqlParseException(string plpgsqlParseError, string? query = null)
+        : base($"Failed to parse PL/pgSQL code: {plpgsqlParseError}", query)
     {
         PlpgsqlParseError = plpgsqlParseError;
     }
 
-    public PlpgsqlParseException(string plpgsqlParseError, Exception innerException, string? plpgsqlCode = null)
-        : base($"Failed to parse PL/pgSQL code: {plpgsqlParseError}", innerException, plpgsqlCode)
+    public PlpgsqlParseException(string plpgsqlParseError, Exception innerException, string? query = null)
+        : base($"Failed to parse PL/pgSQL code: {plpgsqlParseError}", innerException, query)
     {
         PlpgsqlParseError = plpgsqlParseError;
     }

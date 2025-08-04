@@ -1,14 +1,15 @@
-using System;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace NpgqueryLib.Native;
+namespace Npgquery.Native;
 
 /// <summary>
 /// Native interop for libpg_query
 /// </summary>
 internal static unsafe class NativeMethods {
     private const string LibraryName = "pg_query";
+
+    #region Native Structures
 
     [StructLayout(LayoutKind.Sequential)]
     internal struct PgQueryError
@@ -25,7 +26,7 @@ internal static unsafe class NativeMethods {
     /// Result structure from libpg_query
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal struct PgQueryResult {
+    internal struct PgQueryParseResult {
         public IntPtr tree;
         public IntPtr stderr_buffer;
         public IntPtr error;
@@ -99,15 +100,22 @@ internal static unsafe class NativeMethods {
         public IntPtr error;
     }
 
-    internal struct ProcessedScanResult {
+    /// <summary>
+    /// Internal processed scan result for native operations
+    /// </summary>
+    internal struct NativeScanResult {
         public int? Version { get; set; }
         public SqlToken[]? Tokens { get; set; }
         public string? Error { get; set; }
         public string? Stderr { get; set; }
     }
 
+    #endregion
+
+    #region DLL Imports
+
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-    internal static extern PgQueryResult pg_query_parse(byte[] input);
+    internal static extern PgQueryParseResult pg_query_parse(byte[] input);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
     internal static extern PgQueryNormalizeResult pg_query_normalize(byte[] input);
@@ -137,7 +145,7 @@ internal static unsafe class NativeMethods {
     internal static extern PgQueryProtobufParseResult pg_query_parse_protobuf(byte[] input);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-    internal static extern void pg_query_free_parse_result(PgQueryResult result);
+    internal static extern void pg_query_free_parse_result(PgQueryParseResult result);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
     internal static extern void pg_query_free_normalize_result(PgQueryNormalizeResult result);
@@ -159,6 +167,10 @@ internal static unsafe class NativeMethods {
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
     internal static extern void pg_query_free_protobuf_parse_result(PgQueryProtobufParseResult result);
+
+    #endregion
+
+    #region Native Helper Methods
 
     internal static string? PtrToString(IntPtr ptr) {
         return ptr == IntPtr.Zero ? null : Marshal.PtrToStringUTF8(ptr);
@@ -191,7 +203,7 @@ internal static unsafe class NativeMethods {
         return stmts;
     }
 
-    internal static ProcessedScanResult ProcessScanResult(PgQueryScanResult nativeResult, string originalQuery) {
+    internal static NativeScanResult ProcessScanResult(PgQueryScanResult nativeResult, string originalQuery) {
         if (nativeResult.error != IntPtr.Zero) {
             // Use MarshalError for proper error handling
             string? errorMessage = null;
@@ -201,7 +213,7 @@ internal static unsafe class NativeMethods {
                 errorMessage = PtrToString(errorStruct.Value.message);
             }
             
-            return new ProcessedScanResult {
+            return new NativeScanResult {
                 Error = errorMessage ?? "Scan error",
                 Stderr = PtrToString(nativeResult.stderr_buffer)
             };
@@ -217,14 +229,14 @@ internal static unsafe class NativeMethods {
                 return result;
             }
             catch (Exception ex) {
-                return new ProcessedScanResult {
+                return new NativeScanResult {
                     Error = $"Failed to process protobuf data: {ex.Message}",
                     Stderr = stderr
                 };
             }
         }
         else {
-            return new ProcessedScanResult {
+            return new NativeScanResult {
                 Error = "No protobuf data available",
                 Stderr = stderr
             };
@@ -255,4 +267,6 @@ internal static unsafe class NativeMethods {
             System.Runtime.InteropServices.Marshal.FreeHGlobal(protoStruct.data);
         }
     }
+
+    #endregion
 }

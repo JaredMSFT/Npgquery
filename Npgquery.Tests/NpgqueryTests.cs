@@ -1,18 +1,18 @@
 using System.Text.Json;
 using Google.Protobuf;
-using NpgqueryLib;
+using Npgquery;
 using PgQuery;
 using Xunit;
 
-namespace NpgqueryLib.Tests;
+namespace Npgquery.Tests;
 
-public class NpgqueryTests : IDisposable
+public class ParserTests : IDisposable
 {
-    private readonly Npgquery _parser;
+    private readonly Parser _parser;
 
-    public NpgqueryTests()
+    public ParserTests()
     {
-        _parser = new Npgquery();
+        _parser = new Parser();
     }
 
     public void Dispose()
@@ -147,7 +147,7 @@ public class NpgqueryTests : IDisposable
     public void QuickParse_StaticMethod_Works(string query, string expectedType)
     {
         // Act
-        var result = Npgquery.QuickParse(query);
+        var result = Parser.QuickParse(query);
 
         // Assert
         Assert.True(result.IsSuccess);
@@ -279,7 +279,7 @@ public class QueryUtilsTests
     [Fact]
     public void Parse_SerializeToProtobuf_And_Deparse() {
         // Arrange
-        using var parser = new Npgquery();
+        using var parser = new Parser();
         const string query = "SELECT id, name FROM users WHERE active = true";
 
         // Act
@@ -303,7 +303,7 @@ public class QueryUtilsTests
     [Fact]
     public void SimpleSelect_RoundTrip_Through_Protobuf() {
         // Arrange
-        using var parser = new Npgquery();
+        using var parser = new Parser();
         const string query = "SELECT 1";
 
         // Act

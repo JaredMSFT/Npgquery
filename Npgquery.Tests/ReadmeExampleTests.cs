@@ -2,20 +2,20 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Xunit;
-using NpgqueryLib;
+using Npgquery;
 
-namespace NpgqueryLib.Tests;
+namespace Npgquery.Tests;
 
 /// <summary>
 /// Tests that verify all examples from the README.md work correctly
 /// </summary>
 public class ReadmeExampleTests : IDisposable
 {
-    private readonly Npgquery _parser;
+    private readonly Parser _parser;
 
     public ReadmeExampleTests()
     {
-        _parser = new Npgquery();
+        _parser = new Parser();
     }
 
     public void Dispose()
@@ -29,7 +29,7 @@ public class ReadmeExampleTests : IDisposable
     public void BasicParsing_ReadmeExample_Works()
     {
         // Example from README - Basic Parsing section
-        using var parser = new Npgquery();
+        using var parser = new Parser();
         var result = parser.Parse("SELECT * FROM users WHERE id = 1");
 
         if (result.IsSuccess)
@@ -49,7 +49,7 @@ public class ReadmeExampleTests : IDisposable
     public void QueryNormalization_ReadmeExample_Works()
     {
         // Example from README - Query Normalization section
-        using var parser = new Npgquery();
+        using var parser = new Parser();
         var normalizeResult = parser.Normalize("SELECT * FROM users WHERE id = 1");
         
         Assert.True(normalizeResult.IsSuccess);
@@ -64,7 +64,7 @@ public class ReadmeExampleTests : IDisposable
     public void QueryFingerprinting_ReadmeExample_Works()
     {
         // Example from README - Query Fingerprinting section
-        using var parser = new Npgquery();
+        using var parser = new Parser();
         var query1 = "SELECT * FROM users WHERE id = 1";
         var query2 = "SELECT * FROM users WHERE id = 2";
 
@@ -81,7 +81,7 @@ public class ReadmeExampleTests : IDisposable
     public void QueryDeparsing_ReadmeExample_Works()
     {
         // Example from README - Query Deparsing section
-        using var parser = new Npgquery();
+        using var parser = new Parser();
         
         // Parse then deparse back to SQL
         var parseResult = parser.Parse("SELECT * FROM users WHERE id = 1");
@@ -105,7 +105,7 @@ public class ReadmeExampleTests : IDisposable
     public void StatementSplitting_ReadmeExample_Works()
     {
         // Example from README - Statement Splitting section
-        using var parser = new Npgquery();
+        using var parser = new Parser();
         var multiQuery = "SELECT 1; INSERT INTO test VALUES (1); UPDATE test SET col = 2;";
         var splitResult = parser.Split(multiQuery);
 
@@ -126,7 +126,7 @@ public class ReadmeExampleTests : IDisposable
     public void QueryTokenization_ReadmeExample_Works()
     {
         // Example from README - Query Tokenization section
-        using var parser = new Npgquery();
+        using var parser = new Parser();
         var scanResult = parser.Scan("SELECT COUNT(*) FROM users");
         
         if (scanResult.IsSuccess && scanResult.Tokens is not null)
@@ -145,7 +145,7 @@ public class ReadmeExampleTests : IDisposable
     public void PlpgsqlParsing_ReadmeExample_Works()
     {
         // Example from README - PL/pgSQL Parsing section
-        using var parser = new Npgquery();
+        using var parser = new Parser();
         var plpgsqlCode = @"
     BEGIN
         IF user_count > 0 THEN
@@ -169,7 +169,7 @@ public class ReadmeExampleTests : IDisposable
     public void ParseOptions_IncludeLocations_ReadmeExample_Works()
     {
         // Example from README - Parse Options with IncludeLocations
-        using var parser = new Npgquery();
+        using var parser = new Parser();
         var optionsWithLocations = new ParseOptions
         {
             IncludeLocations = true
@@ -185,7 +185,7 @@ public class ReadmeExampleTests : IDisposable
     public void ParseOptions_PostgreSqlVersion_ReadmeExample_Works()
     {
         // Example from README - Parse Options with specific PostgreSQL version
-        using var parser = new Npgquery();
+        using var parser = new Parser();
         var optionsForPg15 = new ParseOptions
         {
             PostgreSqlVersion = 150000 // PostgreSQL 15
@@ -200,7 +200,7 @@ public class ReadmeExampleTests : IDisposable
     public void ParseOptions_CombinedOptions_ReadmeExample_Works()
     {
         // Example from README - Combined multiple options
-        using var parser = new Npgquery();
+        using var parser = new Parser();
         var combinedOptions = new ParseOptions
         {
             IncludeLocations = true,
@@ -221,7 +221,7 @@ public class ReadmeExampleTests : IDisposable
             IncludeLocations = true,
             PostgreSqlVersion = 140000
         };
-        var quickResult = Npgquery.QuickParse("SELECT * FROM users", combinedOptions);
+        var quickResult = Parser.QuickParse("SELECT * FROM users", combinedOptions);
 
         Assert.True(quickResult.IsSuccess);
         Assert.NotNull(quickResult.ParseTree);
@@ -231,7 +231,7 @@ public class ReadmeExampleTests : IDisposable
     public async Task ParseOptions_WithAsyncMethods_ReadmeExample_Works()
     {
         // Example from README - Using options with async methods
-        using var parser = new Npgquery();
+        using var parser = new Parser();
         var combinedOptions = new ParseOptions
         {
             IncludeLocations = true,
@@ -271,7 +271,7 @@ public class ReadmeExampleTests : IDisposable
     public void Parse_WithOptions_ReadmeApiExample_Works()
     {
         // Example from README - API Reference Parse section
-        using var parser = new Npgquery();
+        using var parser = new Parser();
         var options = new ParseOptions { IncludeLocations = true };
         var result = parser.Parse("SELECT * FROM users", options);
 
@@ -289,7 +289,7 @@ public class ReadmeExampleTests : IDisposable
     public void Normalize_ReadmeApiExample_Works()
     {
         // Example from README - API Reference Normalize section
-        using var parser = new Npgquery();
+        using var parser = new Parser();
         var normalizeResult = parser.Normalize("SELECT   *   FROM    users  WHERE id=1");
 
         Assert.True(normalizeResult.IsSuccess);
@@ -301,7 +301,7 @@ public class ReadmeExampleTests : IDisposable
     public void Fingerprint_ReadmeApiExample_Works()
     {
         // Example from README - API Reference Fingerprint section
-        using var parser = new Npgquery();
+        using var parser = new Parser();
         var query = "SELECT * FROM users WHERE id = 1";
 
         var fingerprintResult = parser.Fingerprint(query);
@@ -315,7 +315,7 @@ public class ReadmeExampleTests : IDisposable
     public void Deparse_ReadmeApiExample_Works()
     {
         // Example from README - API Reference Deparse section
-        using var parser = new Npgquery();
+        using var parser = new Parser();
         var ast = parser.Parse("SELECT * FROM users WHERE id = 1").ParseTree;
 
         if (ast is not null)
@@ -330,7 +330,7 @@ public class ReadmeExampleTests : IDisposable
     public void Split_ReadmeApiExample_Works()
     {
         // Example from README - API Reference Split section
-        using var parser = new Npgquery();
+        using var parser = new Parser();
         var multiStatementQuery = "SELECT 1; INSERT INTO users VALUES (1, 'John');";
         var splitResult = parser.Split(multiStatementQuery);
 
@@ -348,7 +348,7 @@ public class ReadmeExampleTests : IDisposable
     public void Scan_ReadmeApiExample_Works()
     {
         // Example from README - API Reference Scan section
-        using var parser = new Npgquery();
+        using var parser = new Parser();
         var scanResult = parser.Scan("SELECT id, name FROM users");
 
         if (scanResult.IsSuccess && scanResult.Tokens is not null)
@@ -365,7 +365,7 @@ public class ReadmeExampleTests : IDisposable
     public void ParsePlpgsql_ReadmeApiExample_Works()
     {
         // Example from README - API Reference ParsePlpgsql section
-        using var parser = new Npgquery();
+        using var parser = new Parser();
         var plpgsqlCode = "BEGIN IF id > 0 THEN RAISE NOTICE 'ID is positive'; END IF; END;";
 
         var plpgsqlResult = parser.ParsePlpgsql(plpgsqlCode);
@@ -378,7 +378,7 @@ public class ReadmeExampleTests : IDisposable
     public void IsValid_ReadmeApiExample_Works()
     {
         // Example from README - API Reference IsValid section
-        using var parser = new Npgquery();
+        using var parser = new Parser();
         var isValid = parser.IsValid("SELECT * FROM users WHERE id = 1");
 
         Assert.True(isValid);
@@ -388,7 +388,7 @@ public class ReadmeExampleTests : IDisposable
     public void GetError_InvalidQuery_ReadmeApiExample_Works()
     {
         // Example from README - API Reference GetError section
-        using var parser = new Npgquery();
+        using var parser = new Parser();
         var result = parser.Parse("SELECT * FROM WHERE id = 1"); // Invalid SQL
 
         if (!result.IsSuccess)
@@ -402,7 +402,7 @@ public class ReadmeExampleTests : IDisposable
     public void ParseAs_ReadmeApiExample_Works()
     {
         // Example from README - API Reference ParseAs section
-        using var parser = new Npgquery();
+        using var parser = new Parser();
         
         // Using object as generic type since the README example uses custom classes
         var result = parser.ParseAs<object>("SELECT id, name FROM users");
@@ -422,37 +422,37 @@ public class ReadmeExampleTests : IDisposable
         var query = "SELECT * FROM users WHERE id = 1";
         
         // QuickParse
-        var parseResult = Npgquery.QuickParse(query);
+        var parseResult = Parser.QuickParse(query);
         Assert.True(parseResult.IsSuccess);
         
         // QuickNormalize
-        var normalizeResult = Npgquery.QuickNormalize(query);
+        var normalizeResult = Parser.QuickNormalize(query);
         Assert.True(normalizeResult.IsSuccess);
         
         // QuickFingerprint
-        var fingerprintResult = Npgquery.QuickFingerprint(query);
+        var fingerprintResult = Parser.QuickFingerprint(query);
         Assert.True(fingerprintResult.IsSuccess);
         
         // QuickSplit
-        var splitResult = Npgquery.QuickSplit("SELECT 1; SELECT 2;");
+        var splitResult = Parser.QuickSplit("SELECT 1; SELECT 2;");
         Assert.True(splitResult.IsSuccess);
         
         // QuickScan
-        var scanResult = Npgquery.QuickScan(query);
+        var scanResult = Parser.QuickScan(query);
         Assert.True(scanResult.IsSuccess);
         
         // QuickParsePlpgsql
-        var plpgsqlResult = Npgquery.QuickParsePlpgsql("BEGIN RETURN 1; END;");
+        var plpgsqlResult = Parser.QuickParsePlpgsql("BEGIN RETURN 1; END;");
         Assert.NotNull(plpgsqlResult);
         
         // QuickScanWithProtobuf
-        var enhancedScanResult = Npgquery.QuickScanWithProtobuf(query);
+        var enhancedScanResult = Parser.QuickScanWithProtobuf(query);
         Assert.True(enhancedScanResult.IsSuccess);
         
         // QuickDeparse (requires a parse tree)
         if (parseResult.ParseTree is not null)
         {
-            var deparseResult = Npgquery.QuickDeparse(parseResult.ParseTree);
+            var deparseResult = Parser.QuickDeparse(parseResult.ParseTree);
             Assert.True(deparseResult.IsSuccess);
         }
     }
@@ -465,7 +465,7 @@ public class ReadmeExampleTests : IDisposable
     public async Task AsyncMethods_ReadmeExamples_Work()
     {
         // Example from README - Async Support section
-        using var parser = new Npgquery();
+        using var parser = new Parser();
         var result = await parser.ParseAsync("SELECT * FROM users WHERE id = 1");
 
         Assert.True(result.IsSuccess);
@@ -476,7 +476,7 @@ public class ReadmeExampleTests : IDisposable
     public async Task StaticAsyncQuickMethods_ReadmeExamples_Work()
     {
         // Example from README - Static async method for quick one-off parsing
-        var quickResult = await NpgqueryAsync.QuickParseAsync("SELECT * FROM users");
+        var quickResult = await ParserAsync.QuickParseAsync("SELECT * FROM users");
         
         Assert.True(quickResult.IsSuccess);
         Assert.NotNull(quickResult.ParseTree);
@@ -486,7 +486,7 @@ public class ReadmeExampleTests : IDisposable
     public async Task AllAsyncMethods_Work()
     {
         // Test all async methods mentioned in README
-        using var parser = new Npgquery();
+        using var parser = new Parser();
         var query = "SELECT * FROM users WHERE id = 1";
         
         // ParseAsync with options
@@ -536,33 +536,33 @@ public class ReadmeExampleTests : IDisposable
         var query = "SELECT * FROM users WHERE id = 1";
         
         // QuickParseAsync
-        var parseResult = await NpgqueryAsync.QuickParseAsync(query);
+        var parseResult = await ParserAsync.QuickParseAsync(query);
         Assert.True(parseResult.IsSuccess);
         
         // QuickNormalizeAsync
-        var normalizeResult = await NpgqueryAsync.QuickNormalizeAsync(query);
+        var normalizeResult = await ParserAsync.QuickNormalizeAsync(query);
         Assert.True(normalizeResult.IsSuccess);
         
         // QuickFingerprintAsync
-        var fingerprintResult = await NpgqueryAsync.QuickFingerprintAsync(query);
+        var fingerprintResult = await ParserAsync.QuickFingerprintAsync(query);
         Assert.True(fingerprintResult.IsSuccess);
         
         // QuickSplitAsync
-        var splitResult = await NpgqueryAsync.QuickSplitAsync("SELECT 1; SELECT 2;");
+        var splitResult = await ParserAsync.QuickSplitAsync("SELECT 1; SELECT 2;");
         Assert.True(splitResult.IsSuccess);
         
         // QuickScanAsync
-        var scanResult = await NpgqueryAsync.QuickScanAsync(query);
+        var scanResult = await ParserAsync.QuickScanAsync(query);
         Assert.True(scanResult.IsSuccess);
         
         // QuickParsePlpgsqlAsync
-        var plpgsqlResult = await NpgqueryAsync.QuickParsePlpgsqlAsync("BEGIN RETURN 1; END;");
+        var plpgsqlResult = await ParserAsync.QuickParsePlpgsqlAsync("BEGIN RETURN 1; END;");
         Assert.NotNull(plpgsqlResult);
         
         // QuickDeparseAsync (requires a parse tree)
         if (parseResult.ParseTree is not null)
         {
-            var deparseResult = await NpgqueryAsync.QuickDeparseAsync(parseResult.ParseTree);
+            var deparseResult = await ParserAsync.QuickDeparseAsync(parseResult.ParseTree);
             Assert.True(deparseResult.IsSuccess);
         }
     }
@@ -571,7 +571,7 @@ public class ReadmeExampleTests : IDisposable
     public async Task ParseManyAsync_ReadmeExample_Works()
     {
         // Example from README - ParseManyAsync for parallel processing
-        using var parser = new Npgquery();
+        using var parser = new Parser();
         var queries = new[] { "SELECT 1", "SELECT 2", "SELECT 3" };
         
         var results = await parser.ParseManyAsync(queries, maxDegreeOfParallelism: 2);
@@ -682,7 +682,7 @@ public class ReadmeExampleTests : IDisposable
     {
         // Example from README - AstToSql
         var query = "SELECT * FROM users";
-        var parseResult = Npgquery.QuickParse(query);
+        var parseResult = Parser.QuickParse(query);
         
         if (parseResult.IsSuccess && parseResult.ParseTree is not null)
         {
@@ -712,7 +712,7 @@ public class ReadmeExampleTests : IDisposable
     public void CustomParseOptions_ReadmeExample_Works()
     {
         // Example from README - Custom Parse Options section
-        using var parser = new Npgquery();
+        using var parser = new Parser();
         var options = new ParseOptions
         {
             IncludeLocations = true,
@@ -765,7 +765,7 @@ public class ReadmeExampleTests : IDisposable
             PostgreSqlVersion = 160000
         };
 
-        using var parser = new Npgquery();
+        using var parser = new Parser();
         
         // Use the same options multiple times
         var result1 = parser.Parse("SELECT 1", reusableOptions);
@@ -789,7 +789,7 @@ public class ReadmeExampleTests : IDisposable
             140000  // PostgreSQL 14.0
         };
 
-        using var parser = new Npgquery();
+        using var parser = new Parser();
         
         foreach (var version in validVersions)
         {

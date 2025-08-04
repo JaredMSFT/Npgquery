@@ -1,15 +1,13 @@
 ﻿using Google.Protobuf;
-using NpgqueryLib.Native;
-using PgQuery;
+using Npgquery.Native;
 using System.Text.Json;
-using static NpgqueryLib.Native.NativeMethods;
 
-namespace NpgqueryLib;
+namespace Npgquery;
 
 /// <summary>
 /// Main PostgreSQL query parser class providing parsing, normalization, and fingerprinting functionality
 /// </summary>
-public sealed class Npgquery : IDisposable
+public sealed class Parser : IDisposable
 {
     private bool _disposed;
 
@@ -21,7 +19,7 @@ public sealed class Npgquery : IDisposable
         ThrowIfDisposedOrNull(query);
         
         return ExecuteNativeOperation(query,
-            q => pg_query_parse(StringToUtf8Bytes(q)),
+            q => NativeMethods.pg_query_parse(NativeMethods.StringToUtf8Bytes(q)),
             (result, q) =>
             {
                 var error = ExtractError(result.error);
@@ -32,7 +30,7 @@ public sealed class Npgquery : IDisposable
                 
                 if (result.tree != IntPtr.Zero)
                 {
-                    var parseTreeJson = PtrToString(result.tree);
+                    var parseTreeJson = NativeMethods.PtrToString(result.tree);
                     if (!string.IsNullOrEmpty(parseTreeJson))
                     {
                         return new ParseResult 
@@ -45,7 +43,7 @@ public sealed class Npgquery : IDisposable
                 
                 return new ParseResult { Query = q, Error = "Failed to parse query: no result from parser" };
             },
-            pg_query_free_parse_result);
+            NativeMethods.pg_query_free_parse_result);
     }
 
     /// <summary>
@@ -56,14 +54,14 @@ public sealed class Npgquery : IDisposable
         ThrowIfDisposedOrNull(query);
 
         return ExecuteNativeOperation(query, 
-            q => pg_query_normalize(StringToUtf8Bytes(q)),
+            q => NativeMethods.pg_query_normalize(NativeMethods.StringToUtf8Bytes(q)),
             (result, q) => new NormalizeResult
             {
                 Query = q,
-                NormalizedQuery = PtrToString(result.normalized_query),
+                NormalizedQuery = NativeMethods.PtrToString(result.normalized_query),
                 Error = ExtractError(result.error)
             },
-            pg_query_free_normalize_result);
+            NativeMethods.pg_query_free_normalize_result);
     }
 
     /// <summary>
@@ -74,14 +72,14 @@ public sealed class Npgquery : IDisposable
         ThrowIfDisposedOrNull(query);
 
         return ExecuteNativeOperation(query,
-            q => pg_query_fingerprint(StringToUtf8Bytes(q)),
+            q => NativeMethods.pg_query_fingerprint(NativeMethods.StringToUtf8Bytes(q)),
             (result, q) => new FingerprintResult
             {
                 Query = q,
-                Fingerprint = PtrToString(result.fingerprint_str),
+                Fingerprint = NativeMethods.PtrToString(result.fingerprint_str),
                 Error = ExtractError(result.error)
             },
-            pg_query_free_fingerprint_result);
+            NativeMethods.pg_query_free_fingerprint_result);
     }
 
     /// <summary>
@@ -92,10 +90,10 @@ public sealed class Npgquery : IDisposable
         ThrowIfDisposedOrNull(query);
 
         return ExecuteNativeOperation(query,
-            q => pg_query_split_with_parser(StringToUtf8Bytes(q)),
+            q => NativeMethods.pg_query_split_with_parser(NativeMethods.StringToUtf8Bytes(q)),
             (result, q) =>
             {
-                var stmts = MarshalSplitStmts(result);
+                var stmts = NativeMethods.MarshalSplitStmts(result);
                 var statements = stmts.Select(stmt => new SqlStatement
                 {
                     Location = stmt.stmt_location,
@@ -110,7 +108,7 @@ public sealed class Npgquery : IDisposable
                     Error = ExtractError(result.error)
                 };
             },
-            pg_query_free_split_result);
+            NativeMethods.pg_query_free_split_result);
     }
 
     /// <summary>
@@ -121,10 +119,10 @@ public sealed class Npgquery : IDisposable
         ThrowIfDisposedOrNull(query);
 
         return ExecuteNativeOperation(query,
-            q => pg_query_scan(StringToUtf8Bytes(q)),
+            q => NativeMethods.pg_query_scan(NativeMethods.StringToUtf8Bytes(q)),
             (result, q) =>
             {
-                var processed = ProcessScanResult(result, q);
+                var processed = NativeMethods.ProcessScanResult(result, q);
                 return new ScanResult
                 {
                     Query = q,
@@ -134,7 +132,7 @@ public sealed class Npgquery : IDisposable
                     Stderr = processed.Stderr
                 };
             },
-            pg_query_free_scan_result);
+            NativeMethods.pg_query_free_scan_result);
     }
 
     /// <summary>
@@ -145,10 +143,10 @@ public sealed class Npgquery : IDisposable
         ThrowIfDisposedOrNull(query);
 
         return ExecuteNativeOperation(query,
-            q => pg_query_scan(StringToUtf8Bytes(q)),
+            q => NativeMethods.pg_query_scan(NativeMethods.StringToUtf8Bytes(q)),
             (result, q) =>
             {
-                var processed = ProcessScanResult(result, q);
+                var processed = NativeMethods.ProcessScanResult(result, q);
                 PgQuery.ScanResult? protobufResult = null;
                 
                 if (result.pbuf.data != IntPtr.Zero && result.pbuf.len != UIntPtr.Zero)
@@ -171,7 +169,7 @@ public sealed class Npgquery : IDisposable
                     ProtobufScanResult = protobufResult
                 };
             },
-            pg_query_free_scan_result);
+            NativeMethods.pg_query_free_scan_result);
     }
 
     /// <summary>
@@ -182,14 +180,14 @@ public sealed class Npgquery : IDisposable
         ThrowIfDisposedOrNull(plpgsqlCode);
 
         return ExecuteNativeOperation(plpgsqlCode,
-            q => pg_query_parse_plpgsql(StringToUtf8Bytes(q)),
+            q => NativeMethods.pg_query_parse_plpgsql(NativeMethods.StringToUtf8Bytes(q)),
             (result, q) => new PlpgsqlParseResult
             {
                 Query = q,
-                ParseTree = PtrToString(result.tree),
+                ParseTree = NativeMethods.PtrToString(result.tree),
                 Error = ExtractError(result.error)
             },
-            pg_query_free_plpgsql_parse_result);
+            NativeMethods.pg_query_free_plpgsql_parse_result);
     }
 
     /// <summary>
@@ -203,30 +201,30 @@ public sealed class Npgquery : IDisposable
         try
         {
             var json = parseTree.RootElement.GetRawText();
-            var protoParseResult = NpgqueryLib.Protobuf.ProtobufAstHelper.ParseResultFromJson(json);
+            var protoParseResult = ProtobufHelper.ParseResultFromJson(json);
             var protoBytes = protoParseResult.ToByteArray();
-            var protoStruct = AllocPgQueryProtobuf(protoBytes);
+            var protoStruct = NativeMethods.AllocPgQueryProtobuf(protoBytes);
 
             try
             {
-                var deparseResult = pg_query_deparse_protobuf(protoStruct);
+                var deparseResult = NativeMethods.pg_query_deparse_protobuf(protoStruct);
                 try
                 {
                     return new DeparseResult
                     {
                         Ast = parseTree.RootElement.ToString(),
-                        Query = PtrToString(deparseResult.query),
+                        Query = NativeMethods.PtrToString(deparseResult.query),
                         Error = ExtractError(deparseResult.error)
                     };
                 }
                 finally
                 {
-                    pg_query_free_deparse_result(deparseResult);
+                    NativeMethods.pg_query_free_deparse_result(deparseResult);
                 }
             }
             finally
             {
-                FreePgQueryProtobuf(protoStruct);
+                NativeMethods.FreePgQueryProtobuf(protoStruct);
             }
         }
         catch (Exception ex)
@@ -248,7 +246,7 @@ public sealed class Npgquery : IDisposable
 
         try
         {
-            var result = pg_query_parse_protobuf(StringToUtf8Bytes(query));
+            var result = NativeMethods.pg_query_parse_protobuf(NativeMethods.StringToUtf8Bytes(query));
             var error = ExtractError(result.error);
             
             return new ProtobufParseResult
@@ -288,19 +286,19 @@ public sealed class Npgquery : IDisposable
 
         try
         {
-            var deparseResult = pg_query_deparse_protobuf(parseResult.ParseTree.Value);
+            var deparseResult = NativeMethods.pg_query_deparse_protobuf(parseResult.ParseTree.Value);
             try
             {
                 return new DeparseResult
                 {
                     Ast = "",
-                    Query = PtrToString(deparseResult.query),
+                    Query = NativeMethods.PtrToString(deparseResult.query),
                     Error = ExtractError(deparseResult.error)
                 };
             }
             finally
             {
-                pg_query_free_deparse_result(deparseResult);
+                NativeMethods.pg_query_free_deparse_result(deparseResult);
             }
         }
         catch (Exception ex)
@@ -315,7 +313,7 @@ public sealed class Npgquery : IDisposable
         {
             if (parseResult.NativeResult != null)
             {
-                pg_query_free_protobuf_parse_result(parseResult.NativeResult.Value);
+                NativeMethods.pg_query_free_protobuf_parse_result(parseResult.NativeResult.Value);
             }
         }
     }
@@ -367,15 +365,15 @@ public sealed class Npgquery : IDisposable
     {
         if (errorPtr == IntPtr.Zero) return null;
         
-        var errorStruct = MarshalError(errorPtr);
+        var errorStruct = NativeMethods.MarshalError(errorPtr);
         return errorStruct?.message != IntPtr.Zero 
-            ? PtrToString(errorStruct.Value.message) ?? "Unknown error"
+            ? NativeMethods.PtrToString(errorStruct.Value.message) ?? "Unknown error"
             : "Unknown error";
     }
 
-    private static T ExecuteWithInstance<T>(Func<Npgquery, T> action)
+    private static T ExecuteWithInstance<T>(Func<Parser, T> action)
     {
-        using var parser = new Npgquery();
+        using var parser = new Parser();
         return action(parser);
     }
 

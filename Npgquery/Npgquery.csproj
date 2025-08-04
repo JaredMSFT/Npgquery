@@ -6,13 +6,39 @@
 		<Nullable>enable</Nullable>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-		<PackageId>NpgqueryLib</PackageId>
+		
+		<!-- Package Information -->
+		<PackageId>Npgquery</PackageId>
 		<PackageVersion>1.0.0</PackageVersion>
-		<Authors>Your Name</Authors>
-		<Description>A .NET 9 C# library for parsing PostgreSQL queries using libpg_query</Description>
-		<PackageTags>postgresql;sql;parser;ast;query</PackageTags>
-		<RepositoryUrl>https://github.com/yourusername/NpgqueryLib</RepositoryUrl>
-		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<Title>Npgquery - PostgreSQL Query Parser for .NET</Title>
+		<Authors>Npgquery Contributors</Authors>
+		<Company>Npgquery</Company>
+		<Product>Npgquery</Product>
+		<Description>A high-performance .NET library for parsing PostgreSQL queries using the official PostgreSQL parser via libpg_query. Supports SQL parsing to AST, query normalization, fingerprinting, statement splitting, tokenization, and PL/pgSQL parsing with full async support.</Description>
+		<Summary>PostgreSQL query parser for .NET with AST generation, normalization, and fingerprinting capabilities</Summary>
+		<PackageTags>postgresql;sql;parser;ast;query;normalization;fingerprinting;plpgsql;tokenization;cross-platform</PackageTags>
+		<RepositoryUrl>https://github.com/yourusername/Npgquery</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageProjectUrl>https://github.com/yourusername/Npgquery</PackageProjectUrl>
+		<PackageLicenseFile>LICENSE</PackageLicenseFile>
+		<PackageReadmeFile>PACKAGE_README.md</PackageReadmeFile>
+		<PackageReleaseNotes>Initial release of Npgquery v1.0.0 with full PostgreSQL query parsing capabilities.</PackageReleaseNotes>
+		<Copyright>Copyright (c) 2025 Npgquery Contributors</Copyright>
+		
+		<!-- Build Configuration -->
+		<AssemblyVersion>1.0.0.0</AssemblyVersion>
+		<FileVersion>1.0.0.0</FileVersion>
+		<InformationalVersion>1.0.0</InformationalVersion>
+		
+		<!-- Documentation -->
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
+		
+		<!-- Repository and CI/CD -->
+		<PublishRepositoryUrl>true</PublishRepositoryUrl>
+		<EmbedUntrackedSources>true</EmbedUntrackedSources>
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -20,14 +46,21 @@
 		<PackageReference Include="Grpc.Tools" Version="2.59.0" PrivateAssets="All" />
 		<PackageReference Include="System.Text.Json" Version="9.0.0" />
 		<PackageReference Include="System.Memory" Version="4.5.5" />
+		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
 	</ItemGroup>
 
 	<ItemGroup>
+		<None Include="..\LICENSE" Pack="true" PackagePath="\" />
+		<None Include="..\PACKAGE_README.md" Pack="true" PackagePath="\" />
 		<None Include="runtimes\**\*" Pack="true" PackagePath="runtimes\" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<Protobuf Include="Protos\pg_query.proto" GrpcServices="Client" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="Protobuf\" />
 	</ItemGroup>
 
 </Project>

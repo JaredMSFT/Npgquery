@@ -3,17 +3,17 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
-using NpgqueryLib;
+using Npgquery;
 
-namespace NpgqueryLib.Tests;
+namespace Npgquery.Tests;
 
-public class NpgqueryAsyncTests : IDisposable
+public class ParserAsyncTests : IDisposable
 {
-    private readonly Npgquery _parser;
+    private readonly Parser _parser;
 
-    public NpgqueryAsyncTests()
+    public ParserAsyncTests()
     {
-        _parser = new Npgquery();
+        _parser = new Parser();
     }
 
     public void Dispose()
@@ -109,7 +109,7 @@ public class NpgqueryAsyncTests : IDisposable
         var query = "SELECT * FROM users";
 
         // Act
-        var result = await NpgqueryAsync.QuickParseAsync(query);
+        var result = await ParserAsync.QuickParseAsync(query);
 
         // Assert
         Assert.True(result.IsSuccess);
@@ -123,7 +123,7 @@ public class NpgqueryAsyncTests : IDisposable
         var query = "SELECT * FROM users /* comment */";
 
         // Act
-        var result = await NpgqueryAsync.QuickNormalizeAsync(query);
+        var result = await ParserAsync.QuickNormalizeAsync(query);
 
         // Assert
         Assert.True(result.IsSuccess);
@@ -138,7 +138,7 @@ public class NpgqueryAsyncTests : IDisposable
         var query = "SELECT * FROM users WHERE id = 1";
 
         // Act
-        var result = await NpgqueryAsync.QuickFingerprintAsync(query);
+        var result = await ParserAsync.QuickFingerprintAsync(query);
 
         // Assert
         Assert.True(result.IsSuccess);
@@ -177,7 +177,7 @@ public class NpgqueryAsyncTests : IDisposable
         var plpgsqlCode = "BEGIN RETURN 'test'; END;";
 
         // Act
-        var result = await NpgqueryAsync.QuickParsePlpgsqlAsync(plpgsqlCode);
+        var result = await ParserAsync.QuickParsePlpgsqlAsync(plpgsqlCode);
 
         // Assert
         Assert.NotNull(result);
@@ -246,10 +246,10 @@ public class NpgqueryAsyncTests : IDisposable
     {
         // Arrange
         var query = "SELECT 1";
-        var parseResult = await NpgqueryAsync.QuickParseAsync(query);
+        var parseResult = await ParserAsync.QuickParseAsync(query);
 
         // Act
-        var deparseResult = await NpgqueryAsync.QuickDeparseAsync(parseResult.ParseTree!);
+        var deparseResult = await ParserAsync.QuickDeparseAsync(parseResult.ParseTree!);
 
         // Assert
         Assert.True(deparseResult.IsSuccess);
@@ -263,7 +263,7 @@ public class NpgqueryAsyncTests : IDisposable
         var query = "SELECT 1; INSERT INTO test VALUES (1);";
 
         // Act
-        var result = await NpgqueryAsync.QuickSplitAsync(query);
+        var result = await ParserAsync.QuickSplitAsync(query);
 
         // Assert
         Assert.True(result.IsSuccess);
@@ -277,7 +277,7 @@ public class NpgqueryAsyncTests : IDisposable
         var query = "SELECT name, email FROM users WHERE active = true";
 
         // Act
-        var result = await NpgqueryAsync.QuickScanAsync(query);
+        var result = await ParserAsync.QuickScanAsync(query);
 
         // Assert
         Assert.True(result.IsSuccess);

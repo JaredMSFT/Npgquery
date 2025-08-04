@@ -1,16 +1,16 @@
 using System;
 using Xunit;
-using NpgqueryLib;
+using Npgquery;
 
-namespace NpgqueryLib.Tests;
+namespace Npgquery.Tests;
 
-public class NpgqueryExtendedTests : IDisposable
+public class ParserExtendedTests : IDisposable
 {
-    private readonly Npgquery _parser;
+    private readonly Parser _parser;
 
-    public NpgqueryExtendedTests()
+    public ParserExtendedTests()
     {
-        _parser = new Npgquery();
+        _parser = new Parser();
     }
 
     public void Dispose()
@@ -89,10 +89,10 @@ public class NpgqueryExtendedTests : IDisposable
     {
         // Arrange
         var query = "SELECT 1";
-        var parseResult = Npgquery.QuickParse(query);
+        var parseResult = Parser.QuickParse(query);
 
         // Act
-        var deparseResult = Npgquery.QuickDeparse(parseResult.ParseTree!);
+        var deparseResult = Parser.QuickDeparse(parseResult.ParseTree!);
 
         // Assert
         Assert.True(deparseResult.IsSuccess);
@@ -106,7 +106,7 @@ public class NpgqueryExtendedTests : IDisposable
         var query = "SELECT 1; SELECT 2;";
 
         // Act
-        var result = Npgquery.QuickSplit(query);
+        var result = Parser.QuickSplit(query);
 
         // Assert
         Assert.True(result.IsSuccess);
@@ -120,7 +120,7 @@ public class NpgqueryExtendedTests : IDisposable
         var query = "SELECT COUNT(*) FROM users";
 
         // Act
-        var result = Npgquery.QuickScan(query);
+        var result = Parser.QuickScan(query);
 
         // Assert
         Assert.True(result.IsSuccess);
@@ -208,7 +208,7 @@ public class NpgqueryExtendedTests : IDisposable
     {
         // Arrange
         var query = "SELECT * FROM users";
-        var parseResult = Npgquery.QuickParse(query);
+        var parseResult = Parser.QuickParse(query);
 
         // Act
         var sql = QueryUtils.AstToSql(parseResult.ParseTree!);

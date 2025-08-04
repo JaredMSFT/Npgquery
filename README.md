@@ -1,4 +1,4 @@
-﻿# NpgqueryLib - PostgreSQL Query Parser for .NET
+﻿# Npgquery - PostgreSQL Query Parser for .NET
 
 A high-performance .NET 9 C# library for parsing PostgreSQL queries using the battle-tested `libpg_query` library. This library provides the same functionality as popular wrappers in other languages like Go, Rust, Python, and JavaScript.
 
@@ -20,7 +20,7 @@ A high-performance .NET 9 C# library for parsing PostgreSQL queries using the ba
 ## Installation
 
 ```bash
-dotnet add package NpgqueryLib
+dotnet add package Npgquery
 ```
 
 ## Quick Start
@@ -28,10 +28,10 @@ dotnet add package NpgqueryLib
 ### Basic Parsing
 
 ```csharp
-using NpgqueryLib;
+using Npgquery;
 
 // Parse a query
-using var parser = new Npgquery();
+using var parser = new Parser();
 var result = parser.Parse("SELECT * FROM users WHERE id = 1");
 
 if (result.IsSuccess)
@@ -47,7 +47,7 @@ else
 ### Query Normalization
 
 ```csharp
-using var parser = new Npgquery();
+using var parser = new Parser();
 var normalizeResult = parser.Normalize("SELECT * FROM users WHERE id = 1");
 Console.WriteLine($"Normalized: {normalizeResult.NormalizedQuery}");
 // Output: SELECT * FROM users WHERE id = $1
@@ -56,7 +56,7 @@ Console.WriteLine($"Normalized: {normalizeResult.NormalizedQuery}");
 ### Query Fingerprinting
 
 ```csharp
-using var parser = new Npgquery();
+using var parser = new Parser();
 var query1 = "SELECT * FROM users WHERE id = 1";
 var query2 = "SELECT * FROM users WHERE id = 2";
 
@@ -70,7 +70,7 @@ Console.WriteLine($"Same structure: {fp1.Fingerprint == fp2.Fingerprint}");
 ### Query Deparsing
 
 ```csharp
-using var parser = new Npgquery();
+using var parser = new Parser();
 // Parse then deparse back to SQL
 var parseResult = parser.Parse("SELECT * FROM users WHERE id = 1");
 if (parseResult.IsSuccess && parseResult.ParseTree is not null)
@@ -83,7 +83,7 @@ if (parseResult.IsSuccess && parseResult.ParseTree is not null)
 ### Statement Splitting
 
 ```csharp
-using var parser = new Npgquery();
+using var parser = new Parser();
 var multiQuery = "SELECT 1; INSERT INTO test VALUES (1); UPDATE test SET col = 2;";
 var splitResult = parser.Split(multiQuery);
 
@@ -100,7 +100,7 @@ if (splitResult.IsSuccess && splitResult.Statements is not null)
 ### Query Tokenization
 
 ```csharp
-using var parser = new Npgquery();
+using var parser = new Parser();
 var scanResult = parser.Scan("SELECT COUNT(*) FROM users");
 if (scanResult.IsSuccess && scanResult.Tokens is not null)
 {
@@ -114,7 +114,7 @@ if (scanResult.IsSuccess && scanResult.Tokens is not null)
 ### PL/pgSQL Parsing
 
 ```csharp
-using var parser = new Npgquery();
+using var parser = new Parser();
 var plpgsqlCode = @"
     BEGIN
         IF user_count > 0 THEN
@@ -132,7 +132,7 @@ if (plpgsqlResult.IsSuccess)
 
 ## Complete API Reference
 
-### Core `Npgquery` Instance Methods
+### Core `Parser` Instance Methods
 
 #### `Parse(query, options)`
 
@@ -148,7 +148,7 @@ Parse a SQL string into a JSON AST.
 - A `ParseResult` object with `IsSuccess`, `ParseTree`, and `Error` properties.
 
 ```csharp
-using var parser = new Npgquery();
+using var parser = new Parser();
 var options = new ParseOptions { IncludeLocations = true };
 var result = parser.Parse("SELECT * FROM users", options);
 
@@ -172,7 +172,7 @@ Parse a SQL string into a Protobuf AST.
 
 **Returns:**
 
-- A `ParseResult` object with `IsSuccess`, `ParseTree`, and `Error` properties.
+- A `ProtobufParseResult` object with `IsSuccess`, `ParseTree`, and `Error` properties.
 
 #### `Normalize(query)`
 
@@ -187,7 +187,7 @@ Normalize the formatting of a SQL query.
 - A `NormalizeResult` object with `NormalizedQuery` and `Error` properties.
 
 ```csharp
-using var parser = new Npgquery();
+using var parser = new Parser();
 var normalizeResult = parser.Normalize("SELECT   *   FROM    users  WHERE id=1");
 
 Console.WriteLine($"Normalized query: {normalizeResult.NormalizedQuery}");
@@ -207,7 +207,7 @@ Generate a structural fingerprint for a SQL query.
 - A `FingerprintResult` object with `Fingerprint` and `Error` properties.
 
 ```csharp
-using var parser = new Npgquery();
+using var parser = new Parser();
 var query = "SELECT * FROM users WHERE id = 1";
 
 var fingerprintResult = parser.Fingerprint(query);
@@ -227,7 +227,7 @@ Convert a JSON AST back to a SQL query.
 - A `DeparseResult` object with `Query` and `Error` properties.
 
 ```csharp
-using var parser = new Npgquery();
+using var parser = new Parser();
 var ast = parser.Parse("SELECT * FROM users WHERE id = 1").ParseTree;
 
 var deparseResult = parser.Deparse(ast);
@@ -259,7 +259,7 @@ Split a SQL string with multiple statements into individual statements.
 - A `SplitResult` object with `Statements` and `Error` properties.
 
 ```csharp
-using var parser = new Npgquery();
+using var parser = new Parser();
 var multiStatementQuery = "SELECT 1; INSERT INTO users VALUES (1, 'John');";
 var splitResult = parser.Split(multiStatementQuery);
 
@@ -285,7 +285,7 @@ Tokenize/scan a SQL query.
 - A `ScanResult` object with `Tokens` and `Error` properties.
 
 ```csharp
-using var parser = new Npgquery();
+using var parser = new Parser();
 var scanResult = parser.Scan("SELECT id, name FROM users");
 
 if (scanResult.IsSuccess)
@@ -307,7 +307,7 @@ Tokenize/scan a SQL query and return tokens in Protobuf format.
 
 **Returns:**
 
-- A `ScanResult` object with `Tokens` and `Error` properties.
+- A `EnhancedScanResult` object with `Tokens` and `Error` properties.
 
 #### `ParsePlpgsql(code)`
 
@@ -319,10 +319,10 @@ Parse a PL/pgSQL code block.
 
 **Returns:**
 
-- A `ParseResult` object with `IsSuccess`, `ParseTree`, and `Error` properties.
+- A `PlpgsqlParseResult` object with `IsSuccess`, `ParseTree`, and `Error` properties.
 
 ```csharp
-using var parser = new Npgquery();
+using var parser = new Parser();
 var plpgsqlCode = "BEGIN IF id > 0 THEN RAISE NOTICE 'ID is positive'; END IF; END;";
 
 var plpgsqlResult = parser.ParsePlpgsql(plpgsqlCode);
@@ -345,7 +345,7 @@ Check if a SQL query is valid.
 - A boolean indicating validity.
 
 ```csharp
-using var parser = new Npgquery();
+using var parser = new Parser();
 var isValid = parser.IsValid("SELECT * FROM users WHERE id = 1");
 
 Console.WriteLine($"Is valid SQL: {isValid}");
@@ -364,7 +364,7 @@ Get the error message for an invalid SQL query.
 - A string with the error message.
 
 ```csharp
-using var parser = new Npgquery();
+using var parser = new Parser();
 var result = parser.Parse("SELECT * FROM WHERE id = 1"); // Invalid SQL
 
 if (!result.IsSuccess)
@@ -387,21 +387,14 @@ Parse a SQL query into a strongly-typed object.
 - An object of type `T` representing the parsed query.
 
 ```csharp
-// Define your AST model classes
-public class MySelect
-{
-    public List<string> Columns { get; set; } = new();
-    public string Table { get; set; } = string.Empty;
-}
-
 // Parse into strongly-typed objects
-using var parser = new Npgquery();
-var mySelect = parser.ParseAs<MySelect>("SELECT id, name FROM users");
+using var parser = new Parser();
+var mySelect = parser.ParseAs<object>("SELECT id, name FROM users");
 
-Console.WriteLine($"Table: {mySelect.Table}, Columns: {string.Join(", ", mySelect.Columns)}");
+Console.WriteLine($"Parsed object: {mySelect}");
 ```
 
-### Static `Npgquery` Quick Methods
+### Static `Parser` Quick Methods
 
 For one-off operations without creating a parser instance.
 
@@ -414,19 +407,19 @@ For one-off operations without creating a parser instance.
 - `QuickParsePlpgsql(code)`
 - `QuickScanWithProtobuf(query)`
 
-### Async Support (`NpgqueryAsync` extensions)
+### Async Support (`ParserAsync` extensions)
 
 All core methods have async counterparts.
 
 ```csharp
-using NpgqueryLib;
+using Npgquery;
 
 // Async parsing on an instance
-using var parser = new Npgquery();
+using var parser = new Parser();
 var result = await parser.ParseAsync("SELECT * FROM users WHERE id = 1");
 
 // Static async method for quick one-off parsing
-var quickResult = await NpgqueryAsync.QuickParseAsync("SELECT * FROM users");
+var quickResult = await ParserAsync.QuickParseAsync("SELECT * FROM users");
 ```
 
 - `ParseAsync(query, options)`
@@ -440,7 +433,7 @@ var quickResult = await NpgqueryAsync.QuickParseAsync("SELECT * FROM users");
 - `IsValidAsync(query)`
 - `ParseManyAsync(queries, options, maxDegreeOfParallelism)`: Parse multiple queries in parallel.
 
-### Static Async Quick Methods (`NpgqueryAsync`)
+### Static Async Quick Methods (`ParserAsync`)
 
 - `QuickParseAsync(query, options)`
 - `QuickNormalizeAsync(query)`
@@ -460,7 +453,7 @@ A static class with helper methods for common tasks.
 - `GetTokens(query)`: Get a list of all tokens from a query.
 - `GetKeywords(query)`: Get a list of unique keywords from a query.
 - `CountStatements(sqlText)`: Count the number of statements in a string.
-- `CleanQuery(query)`: A convenient alias for `Npgquery.QuickNormalize(query)`.
+- `CleanQuery(query)`: A convenient alias for `Parser.QuickNormalize(query)`.
 - `NormalizeStatements(sqlText)`: Splits a multi-statement string and normalizes each one.
 - `HaveSameStructure(query1, query2)`: Check if two queries have the same fingerprint.
 - `AstToSql(parseTree)`: Convert a JSON AST back to an SQL string.
@@ -497,10 +490,10 @@ The `ParseOptions` class provides several configuration options to customize the
 #### Usage Examples
 
 ```csharp
-using NpgqueryLib;
+using Npgquery;
 
 // Basic usage with default options
-using var parser = new Npgquery();
+using var parser = new Parser();
 var result = parser.Parse("SELECT * FROM users");
 
 // Include location information in parse tree
@@ -526,7 +519,7 @@ var combinedOptions = new ParseOptions
 var combinedResult = parser.Parse("SELECT * FROM users", combinedOptions);
 
 // Using with static methods
-var quickResult = Npgquery.QuickParse("SELECT * FROM users", combinedOptions);
+var quickResult = Parser.QuickParse("SELECT * FROM users", combinedOptions);
 
 // Using with async methods
 var asyncResult = await parser.ParseAsync("SELECT * FROM users", combinedOptions);
@@ -555,7 +548,7 @@ var asyncResult = await parser.ParseAsync("SELECT * FROM users", combinedOptions
 ### Custom Parse Options
 
 ```csharp
-using var parser = new Npgquery();
+using var parser = new Parser();
 var options = new ParseOptions
 {
     IncludeLocations = true,
@@ -568,21 +561,9 @@ var result = parser.Parse("SELECT * FROM users", options);
 ### Strongly-Typed AST
 
 ```csharp
-// Define your AST model classes
-public class Statement
-{
-    public SelectStmt? SelectStmt { get; set; }
-}
-
-public class SelectStmt
-{
-    public List<ResTarget>? TargetList { get; set; }
-    public List<RangeVar>? FromClause { get; set; }
-}
-
 // Parse into strongly-typed objects
-using var parser = new Npgquery();
-var ast = parser.ParseAs<Statement>("SELECT * FROM users");
+using var parser = new Parser();
+var ast = parser.ParseAs<object>("SELECT * FROM users");
 ```
 
 ### Batch Processing
@@ -609,7 +590,7 @@ foreach (var query in queries)
 The library uses custom exception types for different operations.
 
 ```csharp
-using var parser = new Npgquery();
+using var parser = new Parser();
 try
 {
     var result = parser.Parse("INVALID SQL");
@@ -646,7 +627,7 @@ catch (NativeLibraryException ex)
 
 ## Performance Tips
 
-1.  **Reuse parser instances**: Avoid creating new `Npgquery` instances for each operation.
+1.  **Reuse parser instances**: Avoid creating new `Parser` instances for each operation.
 2.  **Use async methods**: Offload work to a background thread for better responsiveness in UI or server applications.
 3.  **Process in parallel**: Use `ParseManyAsync` for high-throughput batch processing.
 4.  **Dispose properly**: Use `using` statements or call `Dispose()` to release resources.
@@ -686,7 +667,7 @@ This library requires the `libpg_query` native library. The NuGet package includ
 
 ## Thread Safety
 
-The `Npgquery` class is **not thread-safe**. Create separate instances for each thread or use proper synchronization. The static `Quick*` methods and `QueryUtils` methods are thread-safe.
+The `Parser` class is **not thread-safe**. Create separate instances for each thread or use proper synchronization. The static `Quick*` methods and `QueryUtils` methods are thread-safe.
 
 ## Contributing
 

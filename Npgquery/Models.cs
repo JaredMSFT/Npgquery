@@ -1,28 +1,8 @@
-using System;
-using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using NpgqueryLib.Protobuf;
+using Npgquery.Native;
 
-namespace NpgqueryLib;
-
-/// <summary>
-/// Native protobuf structure for libpg_query
-/// </summary>
-[StructLayout(LayoutKind.Sequential)]
-public struct PgQueryProtobuf {
-    public UIntPtr len;
-    public IntPtr data;
-}
-
-/// <summary>
-/// Native protobuf parse result structure for libpg_query
-/// </summary>
-[StructLayout(LayoutKind.Sequential)]
-public struct PgQueryProtobufParseResult {
-    public PgQueryProtobuf parse_tree;
-    public IntPtr error;
-}
+namespace Npgquery;
 
 /// <summary>
 /// Base result type for all query operations
@@ -279,7 +259,7 @@ public sealed record EnhancedScanResult : ScanResult
     /// <returns>JSON representation of the scan result</returns>
     public string? ToProtobufJson(bool formatted = false) =>
         ProtobufScanResult != null 
-            ? ProtobufAstHelper.ToJson(ProtobufScanResult, formatted) 
+            ? ProtobufHelper.ToJson(ProtobufScanResult, formatted) 
             : null;
 }
 

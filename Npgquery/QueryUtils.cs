@@ -1,7 +1,6 @@
-using System.Text;
 using System.Text.Json;
 
-namespace NpgqueryLib;
+namespace Npgquery;
 
 /// <summary>
 /// Utility methods for working with PostgreSQL queries
@@ -13,7 +12,7 @@ public static class QueryUtils
     /// </summary>
     public static List<string> ExtractTableNames(string query)
     {
-        var result = Npgquery.QuickParse(query);
+        var result = Parser.QuickParse(query);
         if (result.IsError || result.ParseTree is null)
             return new List<string>();
 
@@ -34,8 +33,8 @@ public static class QueryUtils
     /// </summary>
     public static bool HaveSameStructure(string query1, string query2)
     {
-        var fp1 = Npgquery.QuickFingerprint(query1);
-        var fp2 = Npgquery.QuickFingerprint(query2);
+        var fp1 = Parser.QuickFingerprint(query1);
+        var fp2 = Parser.QuickFingerprint(query2);
 
         return fp1.IsSuccess && fp2.IsSuccess && 
                string.Equals(fp1.Fingerprint, fp2.Fingerprint, StringComparison.OrdinalIgnoreCase);
@@ -46,7 +45,7 @@ public static class QueryUtils
     /// </summary>
     public static string? GetQueryType(string query)
     {
-        var result = Npgquery.QuickParse(query);
+        var result = Parser.QuickParse(query);
         if (result.IsError || result.ParseTree is null)
             return null;
 
@@ -65,7 +64,7 @@ public static class QueryUtils
     /// </summary>
     public static string CleanQuery(string query)
     {
-        var normalized = Npgquery.QuickNormalize(query);
+        var normalized = Parser.QuickNormalize(query);
         return normalized.IsSuccess && !string.IsNullOrEmpty(normalized.NormalizedQuery) 
             ? normalized.NormalizedQuery 
             : query.Trim();
@@ -76,7 +75,7 @@ public static class QueryUtils
     /// </summary>
     public static Dictionary<string, bool> ValidateQueries(IEnumerable<string> queries)
     {
-        using var parser = new Npgquery();
+        using var parser = new Parser();
         return queries.ToDictionary(q => q, parser.IsValid);
     }
 
@@ -85,7 +84,7 @@ public static class QueryUtils
     /// </summary>
     public static Dictionary<string, string?> GetQueryErrors(IEnumerable<string> queries)
     {
-        using var parser = new Npgquery();
+        using var parser = new Parser();
         return queries.ToDictionary(q => q, parser.GetError);
     }
 
@@ -94,7 +93,7 @@ public static class QueryUtils
     /// </summary>
     public static List<string> SplitStatements(string sqlText)
     {
-        var result = Npgquery.QuickSplit(sqlText);
+        var result = Parser.QuickSplit(sqlText);
         return result.IsSuccess && result.Statements != null
             ? result.Statements
                 .Where(s => !string.IsNullOrWhiteSpace(s.Statement))
@@ -108,7 +107,7 @@ public static class QueryUtils
     /// </summary>
     public static List<SqlToken> GetTokens(string query)
     {
-        var result = Npgquery.QuickScan(query);
+        var result = Parser.QuickScan(query);
         return result.IsSuccess && result.Tokens != null
             ? result.Tokens.ToList()
             : new List<SqlToken>();
@@ -131,7 +130,7 @@ public static class QueryUtils
     /// </summary>
     public static string? AstToSql(JsonDocument parseTree)
     {
-        var result = Npgquery.QuickDeparse(parseTree);
+        var result = Parser.QuickDeparse(parseTree);
         return result.IsSuccess ? result.Query : null;
     }
 
@@ -140,11 +139,11 @@ public static class QueryUtils
     /// </summary>
     public static (bool Success, string? RoundTripQuery) RoundTripTest(string query)
     {
-        var parseResult = Npgquery.QuickParse(query);
+        var parseResult = Parser.QuickParse(query);
         if (parseResult.IsError || parseResult.ParseTree is null)
             return (false, null);
 
-        var deparseResult = Npgquery.QuickDeparse(parseResult.ParseTree);
+        var deparseResult = Parser.QuickDeparse(parseResult.ParseTree);
         return deparseResult.IsError ? (false, null) : (true, deparseResult.Query);
     }
 
@@ -152,14 +151,14 @@ public static class QueryUtils
     /// Check if PL/pgSQL code is valid
     /// </summary>
     public static bool IsValidPlpgsql(string plpgsqlCode) => 
-        Npgquery.QuickParsePlpgsql(plpgsqlCode).IsSuccess;
+        Parser.QuickParsePlpgsql(plpgsqlCode).IsSuccess;
 
     /// <summary>
     /// Count the number of statements in a SQL string
     /// </summary>
     public static int CountStatements(string sqlText)
     {
-        var result = Npgquery.QuickSplit(sqlText);
+        var result = Parser.QuickSplit(sqlText);
         return result.IsSuccess && result.Statements != null 
             ? result.Statements.Count(s => !string.IsNullOrWhiteSpace(s.Statement))
             : 0;

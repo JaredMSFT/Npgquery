@@ -1,12 +1,11 @@
-using NpgqueryLib;
+using Npgquery;
 
 namespace Examples;
-
 class Program
 {
     static async Task Main(string[] args)
     {
-        Console.WriteLine("NpgqueryLib Examples");
+        Console.WriteLine("Npgquery Examples");
         Console.WriteLine("===================");
 
         await BasicParsingExample();
@@ -35,7 +34,7 @@ class Program
         Console.WriteLine("1. Basic Parsing Example");
         Console.WriteLine("------------------------");
 
-        using var parser = new Npgquery();
+        using var parser = new Parser();
         
         var queries = new[]
         {
@@ -67,7 +66,7 @@ class Program
         Console.WriteLine("2. Normalization Example");
         Console.WriteLine("------------------------");
 
-        using var parser = new Npgquery();
+        using var parser = new Parser();
         
         var queries = new[]
         {
@@ -90,7 +89,7 @@ class Program
         Console.WriteLine("3. Fingerprinting Example");
         Console.WriteLine("-------------------------");
 
-        using var parser = new Npgquery();
+        using var parser = new Parser();
         
         var queries = new[]
         {
@@ -184,7 +183,7 @@ class Program
         Console.WriteLine("5. Async Operations Example");
         Console.WriteLine("----------------------------");
 
-        using var parser = new Npgquery();
+        using var parser = new Parser();
 
         // Single async operation
         var query = "SELECT * FROM users WHERE created_at > '2023-01-01'";
@@ -210,7 +209,7 @@ class Program
         Console.WriteLine();
 
         // Static async methods
-        var quickResult = await NpgqueryAsync.QuickParseAsync("SELECT version()");
+        var quickResult = await ParserAsync.QuickParseAsync("SELECT version()");
         Console.WriteLine($"Quick async parse successful: {quickResult.IsSuccess}");
     }
 
@@ -238,7 +237,7 @@ class Program
         var validQueries = new List<string>();
         var invalidQueries = new List<(string query, string error)>();
 
-        using var parser = new Npgquery();
+        using var parser = new Parser();
 
         foreach (var query in sqlQueries)
         {
@@ -317,7 +316,7 @@ class Program
         Console.WriteLine("7. Extended Features Example");
         Console.WriteLine("----------------------------");
 
-        using var parser = new Npgquery();
+        using var parser = new Parser();
 
         // Query splitting example
         Console.WriteLine("A. Query Splitting:");
