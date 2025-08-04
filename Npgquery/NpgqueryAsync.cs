@@ -8,94 +8,78 @@ namespace NpgqueryLib;
 /// </summary>
 public static class NpgqueryAsync
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-        WriteIndented = false
-    };
-
     /// <summary>
     /// Asynchronously parse a PostgreSQL query into an Abstract Syntax Tree (AST)
     /// </summary>
-    /// <param name="parser">The Npgquery instance</param>
-    /// <param name="query">The SQL query to parse</param>
-    /// <param name="options">Parse options (optional)</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Parse result containing the AST or error information</returns>
     public static Task<ParseResult> ParseAsync(this Npgquery parser, string query, 
-        ParseOptions? options = null, CancellationToken cancellationToken = default)
-    {
-        return Task.Run(() => parser.Parse(query, options), cancellationToken);
-    }
+        ParseOptions? options = null, CancellationToken cancellationToken = default) =>
+        Task.Run(() => parser.Parse(query, options), cancellationToken);
 
     /// <summary>
     /// Asynchronously normalize a PostgreSQL query
     /// </summary>
-    /// <param name="parser">The Npgquery instance</param>
-    /// <param name="query">The SQL query to normalize</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Normalize result containing the normalized query or error information</returns>
     public static Task<NormalizeResult> NormalizeAsync(this Npgquery parser, string query, 
-        CancellationToken cancellationToken = default)
-    {
-        return Task.Run(() => parser.Normalize(query), cancellationToken);
-    }
+        CancellationToken cancellationToken = default) =>
+        Task.Run(() => parser.Normalize(query), cancellationToken);
 
     /// <summary>
     /// Asynchronously generate a fingerprint for a PostgreSQL query
     /// </summary>
-    /// <param name="parser">The Npgquery instance</param>
-    /// <param name="query">The SQL query to fingerprint</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Fingerprint result containing the fingerprint hash or error information</returns>
     public static Task<FingerprintResult> FingerprintAsync(this Npgquery parser, string query, 
-        CancellationToken cancellationToken = default)
-    {
-        return Task.Run(() => parser.Fingerprint(query), cancellationToken);
-    }
+        CancellationToken cancellationToken = default) =>
+        Task.Run(() => parser.Fingerprint(query), cancellationToken);
 
     /// <summary>
     /// Asynchronously parse a PostgreSQL query and return the AST as a strongly-typed object
     /// </summary>
-    /// <typeparam name="T">The type to deserialize the AST to</typeparam>
-    /// <param name="parser">The Npgquery instance</param>
-    /// <param name="query">The SQL query to parse</param>
-    /// <param name="options">Parse options (optional)</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Parsed AST as the specified type, or null if parsing failed</returns>
     public static Task<T?> ParseAsAsync<T>(this Npgquery parser, string query, 
-        ParseOptions? options = null, CancellationToken cancellationToken = default) where T : class
-    {
-        return Task.Run(() => parser.ParseAs<T>(query, options), cancellationToken);
-    }
+        ParseOptions? options = null, CancellationToken cancellationToken = default) where T : class =>
+        Task.Run(() => parser.ParseAs<T>(query, options), cancellationToken);
 
     /// <summary>
     /// Asynchronously validate that a PostgreSQL query has valid syntax
     /// </summary>
-    /// <param name="parser">The Npgquery instance</param>
-    /// <param name="query">The SQL query to validate</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>True if the query is valid, false otherwise</returns>
     public static Task<bool> IsValidAsync(this Npgquery parser, string query, 
-        CancellationToken cancellationToken = default)
-    {
-        return Task.Run(() => parser.IsValid(query), cancellationToken);
-    }
+        CancellationToken cancellationToken = default) =>
+        Task.Run(() => parser.IsValid(query), cancellationToken);
+
+    /// <summary>
+    /// Asynchronously deparse a PostgreSQL AST back to SQL
+    /// </summary>
+    public static Task<DeparseResult> DeparseAsync(this Npgquery parser, JsonDocument parseTree, 
+        CancellationToken cancellationToken = default) =>
+        Task.Run(() => parser.Deparse(parseTree), cancellationToken);
+
+    /// <summary>
+    /// Asynchronously split multiple PostgreSQL statements
+    /// </summary>
+    public static Task<SplitResult> SplitAsync(this Npgquery parser, string query, 
+        CancellationToken cancellationToken = default) =>
+        Task.Run(() => parser.Split(query), cancellationToken);
+
+    /// <summary>
+    /// Asynchronously scan/tokenize a PostgreSQL query
+    /// </summary>
+    public static Task<ScanResult> ScanAsync(this Npgquery parser, string query, 
+        CancellationToken cancellationToken = default) =>
+        Task.Run(() => parser.Scan(query), cancellationToken);
+
+    /// <summary>
+    /// Asynchronously parse PL/pgSQL code
+    /// </summary>
+    public static Task<PlpgsqlParseResult> ParsePlpgsqlAsync(this Npgquery parser, string plpgsqlCode, 
+        CancellationToken cancellationToken = default) =>
+        Task.Run(() => parser.ParsePlpgsql(plpgsqlCode), cancellationToken);
 
     /// <summary>
     /// Process multiple queries in parallel
     /// </summary>
-    /// <param name="parser">The Npgquery instance</param>
-    /// <param name="queries">The SQL queries to parse</param>
-    /// <param name="options">Parse options (optional)</param>
-    /// <param name="maxDegreeOfParallelism">Maximum number of concurrent operations</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Array of parse results</returns>
     public static async Task<ParseResult[]> ParseManyAsync(this Npgquery parser, IEnumerable<string> queries,
         ParseOptions? options = null, int maxDegreeOfParallelism = 4, 
         CancellationToken cancellationToken = default)
     {
-        var semaphore = new SemaphoreSlim(maxDegreeOfParallelism, maxDegreeOfParallelism);
+        using var semaphore = new SemaphoreSlim(maxDegreeOfParallelism);
+        
         var tasks = queries.Select(async query =>
         {
             await semaphore.WaitAsync(cancellationToken);
@@ -150,58 +134,6 @@ public static class NpgqueryAsync
     {
         using var parser = new Npgquery();
         return await parser.FingerprintAsync(query, cancellationToken);
-    }
-
-    /// <summary>
-    /// Asynchronously deparse a PostgreSQL AST back to SQL
-    /// </summary>
-    /// <param name="parser">The Npgquery instance</param>
-    /// <param name="parseTree">The AST JSON string to deparse</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Deparse result containing the SQL query or error information</returns>
-    public static Task<DeparseResult> DeparseAsync(this Npgquery parser, JsonDocument parseTree, 
-        CancellationToken cancellationToken = default)
-    {
-        return Task.Run(() => parser.Deparse(parseTree), cancellationToken);
-    }
-
-    /// <summary>
-    /// Asynchronously split multiple PostgreSQL statements
-    /// </summary>
-    /// <param name="parser">The Npgquery instance</param>
-    /// <param name="query">The SQL string containing multiple statements</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Split result containing individual statements or error information</returns>
-    public static Task<SplitResult> SplitAsync(this Npgquery parser, string query, 
-        CancellationToken cancellationToken = default)
-    {
-        return Task.Run(() => parser.Split(query), cancellationToken);
-    }
-
-    /// <summary>
-    /// Asynchronously scan/tokenize a PostgreSQL query
-    /// </summary>
-    /// <param name="parser">The Npgquery instance</param>
-    /// <param name="query">The SQL query to scan</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Scan result containing tokens or error information</returns>
-    public static Task<ScanResult> ScanAsync(this Npgquery parser, string query, 
-        CancellationToken cancellationToken = default)
-    {
-        return Task.Run(() => parser.Scan(query), cancellationToken);
-    }
-
-    /// <summary>
-    /// Asynchronously parse PL/pgSQL code
-    /// </summary>
-    /// <param name="parser">The Npgquery instance</param>
-    /// <param name="plpgsqlCode">The PL/pgSQL code to parse</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>PL/pgSQL parse result containing the AST or error information</returns>
-    public static Task<PlpgsqlParseResult> ParsePlpgsqlAsync(this Npgquery parser, string plpgsqlCode, 
-        CancellationToken cancellationToken = default)
-    {
-        return Task.Run(() => parser.ParsePlpgsql(plpgsqlCode), cancellationToken);
     }
 
     /// <summary>

@@ -11,15 +11,11 @@ public static class QueryUtils
     /// <summary>
     /// Extract table names from a PostgreSQL query
     /// </summary>
-    /// <param name="query">The SQL query</param>
-    /// <returns>List of table names found in the query</returns>
     public static List<string> ExtractTableNames(string query)
     {
         var result = Npgquery.QuickParse(query);
         if (result.IsError || result.ParseTree is null)
-        {
             return new List<string>();
-        }
 
         try
         {
@@ -36,9 +32,6 @@ public static class QueryUtils
     /// <summary>
     /// Check if two queries have the same structure (same fingerprint)
     /// </summary>
-    /// <param name="query1">First query</param>
-    /// <param name="query2">Second query</param>
-    /// <returns>True if queries have the same structure</returns>
     public static bool HaveSameStructure(string query1, string query2)
     {
         var fp1 = Npgquery.QuickFingerprint(query1);
@@ -51,20 +44,15 @@ public static class QueryUtils
     /// <summary>
     /// Get query type (SELECT, INSERT, UPDATE, DELETE, etc.)
     /// </summary>
-    /// <param name="query">The SQL query</param>
-    /// <returns>Query type or null if cannot be determined</returns>
     public static string? GetQueryType(string query)
     {
         var result = Npgquery.QuickParse(query);
         if (result.IsError || result.ParseTree is null)
-        {
             return null;
-        }
 
         try
         {
-            var doc = result.ParseTree;
-            return ExtractQueryTypeFromJson(doc.RootElement);
+            return ExtractQueryTypeFromJson(result.ParseTree.RootElement);
         }
         catch
         {
@@ -75,8 +63,6 @@ public static class QueryUtils
     /// <summary>
     /// Clean and format a PostgreSQL query
     /// </summary>
-    /// <param name="query">The SQL query to clean</param>
-    /// <returns>Cleaned and formatted query</returns>
     public static string CleanQuery(string query)
     {
         var normalized = Npgquery.QuickNormalize(query);
@@ -88,8 +74,6 @@ public static class QueryUtils
     /// <summary>
     /// Validate multiple queries and return validation results
     /// </summary>
-    /// <param name="queries">Queries to validate</param>
-    /// <returns>Dictionary with query as key and validation result as value</returns>
     public static Dictionary<string, bool> ValidateQueries(IEnumerable<string> queries)
     {
         using var parser = new Npgquery();
@@ -99,8 +83,6 @@ public static class QueryUtils
     /// <summary>
     /// Get detailed error information for invalid queries
     /// </summary>
-    /// <param name="queries">Queries to check</param>
-    /// <returns>Dictionary with query as key and error message as value (null if valid)</returns>
     public static Dictionary<string, string?> GetQueryErrors(IEnumerable<string> queries)
     {
         using var parser = new Npgquery();
@@ -110,61 +92,34 @@ public static class QueryUtils
     /// <summary>
     /// Split a multi-statement SQL string into individual statements
     /// </summary>
-    /// <param name="sqlText">SQL text containing multiple statements</param>
-    /// <returns>List of individual SQL statements</returns>
     public static List<string> SplitStatements(string sqlText)
     {
         var result = Npgquery.QuickSplit(sqlText);
-        if (result.IsError || result.Statements == null)
-        {
-            return new List<string>();
-        }
-
-        return result.Statements
-            .Where(s => !string.IsNullOrWhiteSpace(s.Statement))
-            .Select(s => s.Statement!)
-            .ToList();
+        return result.IsSuccess && result.Statements != null
+            ? result.Statements
+                .Where(s => !string.IsNullOrWhiteSpace(s.Statement))
+                .Select(s => s.Statement!)
+                .ToList()
+            : new List<string>();
     }
 
     /// <summary>
     /// Get all tokens from a PostgreSQL query
     /// </summary>
-    /// <param name="query">The SQL query to tokenize</param>
-    /// <returns>List of tokens</returns>
     public static List<SqlToken> GetTokens(string query)
     {
         var result = Npgquery.QuickScan(query);
-        if (!result.IsSuccess || result.Tokens == null)
-        {
-            return new List<SqlToken>();
-        }
-
-        return result.Tokens.ToList();
+        return result.IsSuccess && result.Tokens != null
+            ? result.Tokens.ToList()
+            : new List<SqlToken>();
     }
-/*
-    /// <summary>
-    /// Get all token strings from a PostgreSQL query
-    /// </summary>
-    /// <param name="query">The SQL query to tokenize</param>
-    /// <returns>List of tokens</returns>
-    public static List<string> GetTokens(string query) {
-        var result = Npgquery.QuickScan(query);
-        if (!result.IsSuccess || result.Tokens == null) {
-            return new List<string>();
-        }
 
-        return result.Tokens.ToList();
-    }
-*/
     /// <summary>
     /// Get all keywords from a PostgreSQL query
     /// </summary>
-    /// <param name="query">The SQL query</param>
-    /// <returns>List of SQL keywords found in the query</returns>
     public static List<string> GetKeywords(string query)
     {
-        var tokens = GetTokens(query);
-        return tokens
+        return GetTokens(query)
             .Where(t => !string.IsNullOrEmpty(t.KeywordKind))
             .Select(t => t.KeywordKind!)
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -174,8 +129,6 @@ public static class QueryUtils
     /// <summary>
     /// Convert AST back to SQL query
     /// </summary>
-    /// <param name="parseTree">The AST JSON string</param>
-    /// <returns>Deparsed SQL query or null if failed</returns>
     public static string? AstToSql(JsonDocument parseTree)
     {
         var result = Npgquery.QuickDeparse(parseTree);
@@ -185,41 +138,25 @@ public static class QueryUtils
     /// <summary>
     /// Round-trip test: parse a query and deparse it back
     /// </summary>
-    /// <param name="query">Original SQL query</param>
-    /// <returns>Tuple with success flag and the round-trip result</returns>
     public static (bool Success, string? RoundTripQuery) RoundTripTest(string query)
     {
         var parseResult = Npgquery.QuickParse(query);
         if (parseResult.IsError || parseResult.ParseTree is null)
-        {
             return (false, null);
-        }
 
         var deparseResult = Npgquery.QuickDeparse(parseResult.ParseTree);
-        if (deparseResult.IsError)
-        {
-            return (false, null);
-        }
-
-        return (true, deparseResult.Query);
+        return deparseResult.IsError ? (false, null) : (true, deparseResult.Query);
     }
 
     /// <summary>
     /// Check if PL/pgSQL code is valid
     /// </summary>
-    /// <param name="plpgsqlCode">The PL/pgSQL code to validate</param>
-    /// <returns>True if valid, false otherwise</returns>
-    public static bool IsValidPlpgsql(string plpgsqlCode)
-    {
-        var result = Npgquery.QuickParsePlpgsql(plpgsqlCode);
-        return result.IsSuccess;
-    }
+    public static bool IsValidPlpgsql(string plpgsqlCode) => 
+        Npgquery.QuickParsePlpgsql(plpgsqlCode).IsSuccess;
 
     /// <summary>
     /// Count the number of statements in a SQL string
     /// </summary>
-    /// <param name="sqlText">SQL text that may contain multiple statements</param>
-    /// <returns>Number of valid SQL statements</returns>
     public static int CountStatements(string sqlText)
     {
         var result = Npgquery.QuickSplit(sqlText);
@@ -231,86 +168,67 @@ public static class QueryUtils
     /// <summary>
     /// Normalize multiple statements individually
     /// </summary>
-    /// <param name="sqlText">SQL text containing multiple statements</param>
-    /// <returns>Dictionary with original statement as key and normalized version as value</returns>
     public static Dictionary<string, string> NormalizeStatements(string sqlText)
     {
-        var statements = SplitStatements(sqlText);
-        var result = new Dictionary<string, string>();
-
-        foreach (var statement in statements)
-        {
-            var normalized = CleanQuery(statement);
-            result[statement] = normalized;
-        }
-
-        return result;
+        return SplitStatements(sqlText)
+            .ToDictionary(statement => statement, CleanQuery);
     }
 
     private static void ExtractTablesFromJson(JsonElement element, HashSet<string> tables)
     {
-        if (element.ValueKind == JsonValueKind.Object)
+        switch (element.ValueKind)
         {
-            foreach (var property in element.EnumerateObject())
-            {
-                if (property.Name.Equals("relname", StringComparison.OrdinalIgnoreCase) && 
-                    property.Value.ValueKind == JsonValueKind.String)
+            case JsonValueKind.Object:
+                foreach (var property in element.EnumerateObject())
                 {
-                    var tableName = property.Value.GetString();
-                    if (!string.IsNullOrEmpty(tableName))
+                    if (property.Name.Equals("relname", StringComparison.OrdinalIgnoreCase) && 
+                        property.Value.ValueKind == JsonValueKind.String)
                     {
-                        tables.Add(tableName);
+                        var tableName = property.Value.GetString();
+                        if (!string.IsNullOrEmpty(tableName))
+                            tables.Add(tableName);
+                    }
+                    else if (property.Value.ValueKind is JsonValueKind.Object or JsonValueKind.Array)
+                    {
+                        ExtractTablesFromJson(property.Value, tables);
                     }
                 }
-                else if (property.Value.ValueKind == JsonValueKind.Object || 
-                         property.Value.ValueKind == JsonValueKind.Array)
-                {
-                    ExtractTablesFromJson(property.Value, tables);
-                }
-            }
-        }
-        else if (element.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var item in element.EnumerateArray())
-            {
-                ExtractTablesFromJson(item, tables);
-            }
+                break;
+            
+            case JsonValueKind.Array:
+                foreach (var item in element.EnumerateArray())
+                    ExtractTablesFromJson(item, tables);
+                break;
         }
     }
 
     private static string? ExtractQueryTypeFromJson(JsonElement element)
     {
-        if (element.ValueKind == JsonValueKind.Object)
+        switch (element.ValueKind)
         {
-            foreach (var property in element.EnumerateObject())
-            {
-                if (property.Name.EndsWith("Stmt", StringComparison.OrdinalIgnoreCase))
+            case JsonValueKind.Object:
+                foreach (var property in element.EnumerateObject())
                 {
-                    return property.Name.Replace("Stmt", "", StringComparison.OrdinalIgnoreCase).ToUpperInvariant();
-                }
-                
-                if (property.Value.ValueKind == JsonValueKind.Object)
-                {
-                    var result = ExtractQueryTypeFromJson(property.Value);
+                    if (!property.Name.Equals("stmt", StringComparison.OrdinalIgnoreCase) && property.Name.EndsWith("Stmt", StringComparison.OrdinalIgnoreCase))
+                        return property.Name.Replace("Stmt", "", StringComparison.OrdinalIgnoreCase).ToUpperInvariant();
+                    
+                    var result = property.Value.ValueKind switch
+                    {
+                        JsonValueKind.Object => ExtractQueryTypeFromJson(property.Value),
+                        JsonValueKind.Array => property.Value.EnumerateArray()
+                            .Select(ExtractQueryTypeFromJson)
+                            .FirstOrDefault(r => r != null),
+                        _ => null
+                    };
+                    
                     if (result != null) return result;
                 }
-                else if (property.Value.ValueKind == JsonValueKind.Array)
-                {
-                    foreach (var item in property.Value.EnumerateArray())
-                    {
-                        var result = ExtractQueryTypeFromJson(item);
-                        if (result != null) return result;
-                    }
-                }
-            }
-        }
-        else if (element.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var item in element.EnumerateArray())
-            {
-                var result = ExtractQueryTypeFromJson(item);
-                if (result != null) return result;
-            }
+                break;
+                
+            case JsonValueKind.Array:
+                return element.EnumerateArray()
+                    .Select(ExtractQueryTypeFromJson)
+                    .FirstOrDefault(r => r != null);
         }
 
         return null;

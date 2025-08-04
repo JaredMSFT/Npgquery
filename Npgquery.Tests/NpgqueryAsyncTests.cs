@@ -166,7 +166,7 @@ public class NpgqueryAsyncTests : IDisposable
         using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
 
         // Act & Assert
-        await Assert.ThrowsAsync<OperationCanceledException>(
+        await Assert.ThrowsAsync<TaskCanceledException>(
             () => _parser.ParseManyAsync(queries, cancellationToken: cts.Token));
     }
 

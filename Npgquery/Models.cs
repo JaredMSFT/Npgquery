@@ -25,111 +25,69 @@ public struct PgQueryProtobufParseResult {
 }
 
 /// <summary>
+/// Base result type for all query operations
+/// </summary>
+public abstract record QueryResultBase
+{
+    /// <summary>
+    /// The original query/input that was processed
+    /// </summary>
+    [JsonPropertyName("query")]
+    public string Query { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Any error that occurred during the operation
+    /// </summary>
+    [JsonPropertyName("error")]
+    public string? Error { get; init; }
+
+    /// <summary>
+    /// Indicates whether the operation was successful
+    /// </summary>
+    [JsonIgnore]
+    public bool IsSuccess => string.IsNullOrEmpty(Error);
+
+    /// <summary>
+    /// Indicates whether the operation failed
+    /// </summary>
+    [JsonIgnore]
+    public bool IsError => !IsSuccess;
+}
+
+/// <summary>
 /// Represents the result of parsing a PostgreSQL query
 /// </summary>
-public sealed record ParseResult
+public sealed record ParseResult : QueryResultBase
 {
     /// <summary>
     /// The parsed query as a JSON document representing the parse tree
     /// </summary>
     [JsonPropertyName("parse_tree")]
     public JsonDocument? ParseTree { get; init; }
-
-    /// <summary>
-    /// Any error that occurred during parsing
-    /// </summary>
-    [JsonPropertyName("error")]
-    public string? Error { get; init; }
-
-    /// <summary>
-    /// The original query that was parsed
-    /// </summary>
-    [JsonPropertyName("query")]
-    public string Query { get; init; } = string.Empty;
-
-    /// <summary>
-    /// Indicates whether parsing was successful
-    /// </summary>
-    [JsonIgnore]
-    public bool IsSuccess => string.IsNullOrEmpty(Error);
-
-    /// <summary>
-    /// Indicates whether parsing failed
-    /// </summary>
-    [JsonIgnore]
-    public bool IsError => !IsSuccess;
 }
 
 /// <summary>
 /// Represents the result of normalizing a PostgreSQL query
 /// </summary>
-public sealed record NormalizeResult
+public sealed record NormalizeResult : QueryResultBase
 {
     /// <summary>
     /// The normalized query string
     /// </summary>
     [JsonPropertyName("normalized_query")]
     public string? NormalizedQuery { get; init; }
-
-    /// <summary>
-    /// Any error that occurred during normalization
-    /// </summary>
-    [JsonPropertyName("error")]
-    public string? Error { get; init; }
-
-    /// <summary>
-    /// The original query that was normalized
-    /// </summary>
-    [JsonPropertyName("query")]
-    public string Query { get; init; } = string.Empty;
-
-    /// <summary>
-    /// Indicates whether normalization was successful
-    /// </summary>
-    [JsonIgnore]
-    public bool IsSuccess => string.IsNullOrEmpty(Error);
-
-    /// <summary>
-    /// Indicates whether normalization failed
-    /// </summary>
-    [JsonIgnore]
-    public bool IsError => !IsSuccess;
 }
 
 /// <summary>
 /// Represents the result of fingerprinting a PostgreSQL query
 /// </summary>
-public sealed record FingerprintResult
+public sealed record FingerprintResult : QueryResultBase
 {
     /// <summary>
     /// The fingerprint hash of the query
     /// </summary>
     [JsonPropertyName("fingerprint")]
     public string? Fingerprint { get; init; }
-
-    /// <summary>
-    /// Any error that occurred during fingerprinting
-    /// </summary>
-    [JsonPropertyName("error")]
-    public string? Error { get; init; }
-
-    /// <summary>
-    /// The original query that was fingerprinted
-    /// </summary>
-    [JsonPropertyName("query")]
-    public string Query { get; init; } = string.Empty;
-
-    /// <summary>
-    /// Indicates whether fingerprinting was successful
-    /// </summary>
-    [JsonIgnore]
-    public bool IsSuccess => string.IsNullOrEmpty(Error);
-
-    /// <summary>
-    /// Indicates whether fingerprinting failed
-    /// </summary>
-    [JsonIgnore]
-    public bool IsError => !IsSuccess;
 }
 
 /// <summary>
@@ -165,25 +123,25 @@ public sealed record DeparseResult
     public string? Query { get; init; }
 
     /// <summary>
-    /// Any error that occurred during deparsing
-    /// </summary>
-    [JsonPropertyName("error")]
-    public string? Error { get; init; }
-
-    /// <summary>
     /// The original AST that was deparsed
     /// </summary>
     [JsonPropertyName("ast")]
     public string Ast { get; init; } = string.Empty;
 
     /// <summary>
-    /// Indicates whether deparsing was successful
+    /// Any error that occurred during the operation
+    /// </summary>
+    [JsonPropertyName("error")]
+    public string? Error { get; init; }
+
+    /// <summary>
+    /// Indicates whether the operation was successful
     /// </summary>
     [JsonIgnore]
     public bool IsSuccess => string.IsNullOrEmpty(Error);
 
     /// <summary>
-    /// Indicates whether deparsing failed
+    /// Indicates whether the operation failed
     /// </summary>
     [JsonIgnore]
     public bool IsError => !IsSuccess;
@@ -216,37 +174,13 @@ public sealed record SqlStatement
 /// <summary>
 /// Represents the result of splitting multiple PostgreSQL statements
 /// </summary>
-public sealed record SplitResult
+public sealed record SplitResult : QueryResultBase
 {
     /// <summary>
     /// The individual SQL statements
     /// </summary>
     [JsonPropertyName("stmts")]
     public SqlStatement[]? Statements { get; init; }
-
-    /// <summary>
-    /// Any error that occurred during splitting
-    /// </summary>
-    [JsonPropertyName("error")]
-    public string? Error { get; init; }
-
-    /// <summary>
-    /// The original query that was split
-    /// </summary>
-    [JsonPropertyName("query")]
-    public string Query { get; init; } = string.Empty;
-
-    /// <summary>
-    /// Indicates whether splitting was successful
-    /// </summary>
-    [JsonIgnore]
-    public bool IsSuccess => string.IsNullOrEmpty(Error);
-
-    /// <summary>
-    /// Indicates whether splitting failed
-    /// </summary>
-    [JsonIgnore]
-    public bool IsError => !IsSuccess;
 }
 
 /// <summary>
@@ -294,7 +228,8 @@ public sealed record SqlToken
 /// <summary>
 /// Represents the result of scanning/tokenizing a PostgreSQL query
 /// </summary>
-public sealed record ScanResult {
+public record ScanResult : QueryResultBase
+{
     /// <summary>
     /// The PostgreSQL version number
     /// </summary>
@@ -308,106 +243,29 @@ public sealed record ScanResult {
     public SqlToken[]? Tokens { get; init; }
 
     /// <summary>
-    /// Error message if scanning failed, or null if successful
-    /// </summary>
-    [JsonPropertyName("error")]
-    public string? Error { get; init; }
-
-    /// <summary>
     /// Standard error output from the scanner
     /// </summary>
     [JsonPropertyName("stderr")]
     public string? Stderr { get; init; }
-
-    /// <summary>
-    /// The original query that was scanned
-    /// </summary>
-    [JsonPropertyName("query")]
-    public string Query { get; init; } = string.Empty;
-
-    /// <summary>
-    /// Whether the scanning was successful
-    /// </summary>
-    [JsonIgnore]
-    public bool IsSuccess => string.IsNullOrEmpty(Error);
-
-    /// <summary>
-    /// Whether the scanning failed
-    /// </summary>
-    [JsonIgnore]
-    public bool IsError => !IsSuccess;
 }
 
 /// <summary>
 /// Represents the result of parsing PL/pgSQL code
 /// </summary>
-public sealed record PlpgsqlParseResult
+public sealed record PlpgsqlParseResult : QueryResultBase
 {
     /// <summary>
     /// The parsed PL/pgSQL as a JSON string representing the parse tree
     /// </summary>
     [JsonPropertyName("parse_tree")]
     public string? ParseTree { get; init; }
-
-    /// <summary>
-    /// Any error that occurred during parsing
-    /// </summary>
-    [JsonPropertyName("error")]
-    public string? Error { get; init; }
-
-    /// <summary>
-    /// The original PL/pgSQL code that was parsed
-    /// </summary>
-    [JsonPropertyName("query")]
-    public string Query { get; init; } = string.Empty;
-
-    /// <summary>
-    /// Indicates whether parsing was successful
-    /// </summary>
-    [JsonIgnore]
-    public bool IsSuccess => string.IsNullOrEmpty(Error);
-
-    /// <summary>
-    /// Indicates whether parsing failed
-    /// </summary>
-    [JsonIgnore]
-    public bool IsError => !IsSuccess;
 }
 
 /// <summary>
 /// Enhanced scan result that includes both processed tokens and raw protobuf data
 /// </summary>
-public sealed record EnhancedScanResult {
-    /// <summary>
-    /// The PostgreSQL version number
-    /// </summary>
-    [JsonPropertyName("version")]
-    public int? Version { get; init; }
-
-    /// <summary>
-    /// The tokens found in the query
-    /// </summary>
-    [JsonPropertyName("tokens")]
-    public SqlToken[]? Tokens { get; init; }
-
-    /// <summary>
-    /// Error message if scanning failed, or null if successful
-    /// </summary>
-    [JsonPropertyName("error")]
-    public string? Error { get; init; }
-
-    /// <summary>
-    /// Standard error output from the scanner
-    /// </summary>
-    [JsonPropertyName("stderr")]
-    public string? Stderr { get; init; }
-
-    /// <summary>
-    /// The original query that was scanned
-    /// </summary>
-    [JsonPropertyName("query")]
-    public string Query { get; init; } = string.Empty;
-
+public sealed record EnhancedScanResult : ScanResult
+{
     /// <summary>
     /// Raw protobuf scan result for advanced processing
     /// </summary>
@@ -415,39 +273,21 @@ public sealed record EnhancedScanResult {
     public PgQuery.ScanResult? ProtobufScanResult { get; init; }
 
     /// <summary>
-    /// Whether the scanning was successful
-    /// </summary>
-    [JsonIgnore]
-    public bool IsSuccess => string.IsNullOrEmpty(Error);
-
-    /// <summary>
-    /// Whether the scanning failed
-    /// </summary>
-    [JsonIgnore]
-    public bool IsError => !IsSuccess;
-
-    /// <summary>
     /// Convert the protobuf scan result to JSON
     /// </summary>
     /// <param name="formatted">Whether to format the JSON with indentation</param>
     /// <returns>JSON representation of the scan result</returns>
-    public string? ToProtobufJson(bool formatted = false) {
-        return ProtobufScanResult != null 
+    public string? ToProtobufJson(bool formatted = false) =>
+        ProtobufScanResult != null 
             ? ProtobufAstHelper.ToJson(ProtobufScanResult, formatted) 
             : null;
-    }
 }
 
 /// <summary>
 /// Represents the result of parsing a PostgreSQL query to protobuf format
 /// </summary>
-public sealed record ProtobufParseResult
+public sealed record ProtobufParseResult : QueryResultBase
 {
-    /// <summary>
-    /// The original query that was parsed
-    /// </summary>
-    public string Query { get; init; } = "";
-    
     /// <summary>
     /// The protobuf parse tree (for internal use)
     /// </summary>
@@ -457,19 +297,4 @@ public sealed record ProtobufParseResult
     /// The native result (for cleanup)
     /// </summary>
     internal PgQueryProtobufParseResult? NativeResult { get; init; }
-    
-    /// <summary>
-    /// Any error that occurred during parsing
-    /// </summary>
-    public string? Error { get; init; }
-    
-    /// <summary>
-    /// Indicates whether parsing was successful
-    /// </summary>
-    public bool IsSuccess => Error == null;
-    
-    /// <summary>
-    /// Indicates whether parsing failed
-    /// </summary>
-    public bool IsError => Error != null;
 }
