@@ -1,8 +1,8 @@
-# NpgqueryLib - Native Library Setup
+# Npgquery - Native Library Setup
 
 ## Overview
 
-NpgqueryLib requires the native `libpg_query` library to function. This library embeds the PostgreSQL parser and provides the core functionality for parsing SQL queries.
+Npgquery requires the native `libpg_query` library to function. This library embeds the PostgreSQL parser and provides the core functionality for parsing SQL queries.
 
 ## Native Library Requirements
 
@@ -24,7 +24,7 @@ NpgqueryLib requires the native `libpg_query` library to function. This library 
 The NuGet package includes pre-compiled native libraries for all supported platforms:
 
 ```bash
-dotnet add package NpgqueryLib
+dotnet add package Npgquery
 ```
 
 The native libraries will be automatically included in your application's output directory.
@@ -45,7 +45,7 @@ When distributed, your application should have this structure:
 ```
 YourApp/
 ??? YourApp.exe (or .dll)
-??? NpgqueryLib.dll
+??? Npgquery.dll
 ??? runtimes/
     ??? win-x64/
     ?   ??? native/
@@ -94,7 +94,7 @@ If you encounter native library loading issues, you can:
 
 2. **Enable native library logging**:
    ```csharp
-   // Add this before using NpgqueryLib
+   // Add this before using Npgquery
    AppContext.SetSwitch("System.Runtime.InteropServices.EnableConsoleLogging", true);
    ```
 
@@ -125,8 +125,8 @@ The embedded PostgreSQL parser supports syntax from PostgreSQL versions 10 throu
 
 ## License and Attribution
 
-- NpgqueryLib: MIT License
+- Npgquery: MIT License
 - libpg_query: 3-Clause BSD License
 - PostgreSQL Parser: PostgreSQL License
 
-When distributing applications using NpgqueryLib, you must include appropriate license attributions for all components.
+When distributing applications using Npgquery, you must include appropriate license attributions for all components.
