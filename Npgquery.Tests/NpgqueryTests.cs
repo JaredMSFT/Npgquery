@@ -320,4 +320,301 @@ public class QueryUtilsTests
         Assert.NotNull(deparseResult.Query);
     }
 
+    #region PL/pgSQL Tests
+
+    [Fact]
+    public void ParsePlpgsql_SimpleBlock_ReturnsSuccess()
+    {
+
+        // Arrange
+        using var _parser = new Parser();
+        var plpgsqlCode = @"CREATE OR REPLACE FUNCTION cs_fmt_browser_version(v_name varchar,
+                                                  v_version varchar)
+RETURNS varchar AS $$
+BEGIN
+    IF v_version IS NULL THEN
+        RETURN v_name;
+    END IF;
+    RETURN v_name || '/' || v_version;
+END;
+$$ LANGUAGE plpgsql;";
+
+        // Act
+        var result = _parser.ParsePlpgsql(plpgsqlCode);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(result.ParseTree);
+        Assert.Null(result.Error);
+        Assert.Equal(plpgsqlCode, result.Query);
+    }
+
+    [Fact]
+    public void ParsePlpgsql_ConditionalLogic_ReturnsSuccess()
+    {
+        // Arrange
+        using var _parser = new Parser();
+        var plpgsqlCode = @"CREATE OR REPLACE FUNCTION cs_fmt_browser_version(v_name varchar,
+                                                  v_version varchar)
+RETURNS varchar AS $$
+BEGIN
+    IF v_version IS NULL THEN
+        RETURN v_name;
+    END IF;
+    RETURN v_name || '/' || v_version;
+END;
+$$ LANGUAGE plpgsql;";
+
+        // Act
+        var result = _parser.ParsePlpgsql(plpgsqlCode);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(result.ParseTree);
+        Assert.Null(result.Error);
+        Assert.Contains("PLpgSQL_stmt_return", result.ParseTree);
+    }
+
+    [Fact]
+    public void ParsePlpgsql_LoopStatement_ReturnsSuccess()
+    {
+        // Arrange
+        using var _parser = new Parser();
+        var plpgsqlCode = @"CREATE OR REPLACE FUNCTION example_function()
+RETURNS INTEGER AS $$
+DECLARE
+    i INTEGER := 1;
+BEGIN
+    WHILE i <= 10 LOOP
+        RAISE NOTICE 'Current value: %', i;
+        i := i + 1;
+    END LOOP;
+    RETURN i;
+END;
+$$ LANGUAGE plpgsql;";
+
+        // Act
+        var result = _parser.ParsePlpgsql(plpgsqlCode);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(result.ParseTree);
+        Assert.Null(result.Error);
+    }
+
+    [Fact]
+    public void ParsePlpgsql_ExceptionHandling_ReturnsSuccess()
+    {
+        // Arrange
+        using var _parser = new Parser();
+        var plpgsqlCode = @"DO $$
+BEGIN
+    INSERT INTO users (name, email) VALUES ('John', 'john@example.com');
+    RAISE NOTICE 'User created successfully';
+EXCEPTION
+    WHEN unique_violation THEN
+        RAISE NOTICE 'User already exists';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'An error occurred';
+END;
+$$;";
+
+        // Act
+        var result = _parser.ParsePlpgsql(plpgsqlCode);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(result.ParseTree);
+        Assert.Null(result.Error);
+    }
+
+    [Fact]
+    public void ParsePlpgsql_ComplexFunction_ReturnsSuccess()
+    {
+        // Arrange
+        using var _parser = new Parser();
+        var plpgsqlCode = @"DO $$
+        DECLARE
+                total_count INTEGER := 0;
+                user_rec RECORD;
+            BEGIN
+                FOR user_rec IN SELECT * FROM users WHERE active = true LOOP
+                    total_count := total_count + 1;
+                    UPDATE users SET last_accessed = NOW() WHERE id = user_rec.id;
+                END LOOP;
+                
+                IF total_count > 100 THEN
+                    RAISE WARNING 'High user count: %', total_count;
+                END IF;
+                
+                RETURN total_count;
+            EXCEPTION
+                WHEN OTHERS THEN
+                    RAISE EXCEPTION 'Error processing users: %', SQLERRM;
+            END;
+            $$";
+
+        // Act
+        var result = _parser.ParsePlpgsql(plpgsqlCode);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(result.ParseTree);
+        Assert.Null(result.Error);
+    }
+
+    [Fact]
+    public void ParsePlpgsql_EmptyBlock_ReturnsSuccess()
+    {
+        // Arrange
+        using var _parser = new Parser();
+        var plpgsqlCode = "DO $$ BEGIN END; $$";
+
+        // Act
+        var result = _parser.ParsePlpgsql(plpgsqlCode);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(result.ParseTree);
+        Assert.Null(result.Error);
+    }
+
+    [Fact]
+    public void ParsePlpgsql_InvalidSyntax_ReturnsError()
+    {
+        // Arrange
+        using var _parser = new Parser();
+        var plpgsqlCode = @"BEGIN
+                INVALID SYNTAX HERE
+            END;";
+
+        // Act
+        var result = _parser.ParsePlpgsql(plpgsqlCode);
+
+        // Assert
+        Assert.True(result.IsError);
+        Assert.Null(result.ParseTree);
+        Assert.NotNull(result.Error);
+        Assert.Equal(plpgsqlCode, result.Query);
+    }
+
+    [Fact]
+    public void ParsePlpgsql_MissingEnd_ReturnsError()
+    {
+        // Arrange
+        using var _parser = new Parser();
+        var plpgsqlCode = @"BEGIN
+                RETURN 42;";
+
+        // Act
+        var result = _parser.ParsePlpgsql(plpgsqlCode);
+
+        // Assert
+        Assert.True(result.IsError);
+        Assert.Null(result.ParseTree);
+        Assert.NotNull(result.Error);
+    }
+
+    [Fact]
+    public void ParsePlpgsql_NullInput_ThrowsException()
+    {
+        // Act & Assert
+        using var _parser = new Parser();
+        Assert.Throws<ArgumentNullException>(() => _parser.ParsePlpgsql(null!));
+    }
+
+    [Theory]
+    [InlineData("DO $$ BEGIN RETURN 42; END; $$")]
+    [InlineData(@"DO $$ DECLARE x INTEGER; BEGIN x := 1; RETURN x; END; $$")]
+    [InlineData(@"DO $$ 
+DECLARE
+    result TEXT;
+BEGIN 
+    IF TRUE THEN 
+        result := 'yes'; 
+    ELSE 
+        result := 'no'; 
+    END IF; 
+    RAISE NOTICE 'Result: %', result;
+END; 
+$$;")]
+    public void ParsePlpgsql_ValidCodes_ReturnSuccess(string plpgsqlCode)
+    {
+        // Act
+        using var _parser = new Parser();
+        var result = _parser.ParsePlpgsql(plpgsqlCode);
+
+        // Assert
+        Assert.True(result.IsSuccess, $"Expected success for: {plpgsqlCode}");
+        Assert.NotNull(result.ParseTree);
+        Assert.Null(result.Error);
+    }
+
+    [Theory]
+    [InlineData("INVALID")]
+    [InlineData("BEGIN INVALID SYNTAX END;")]
+    [InlineData("BEGIN RETURN; END")]  // Missing semicolon before END
+    public void ParsePlpgsql_InvalidCodes_ReturnError(string plpgsqlCode)
+    {
+        // Act
+        using var _parser = new Parser();
+        var result = _parser.ParsePlpgsql(plpgsqlCode);
+
+        // Assert
+        Assert.True(result.IsError, $"Expected error for: {plpgsqlCode}");
+        Assert.Null(result.ParseTree);
+        Assert.NotNull(result.Error);
+    }
+
+    #endregion
+
+    #region Utility Tests for PL/pgSQL
+
+    [Fact]
+    public void QueryUtils_IsValidPlpgsql_ValidCode_ReturnsTrue()
+    {
+        // Arrange
+        var validPlpgsqlCode = @"DO $$ BEGIN
+                RETURN 'test';
+            END; $$";
+
+        // Act
+        var isValid = QueryUtils.IsValidPlpgsql(validPlpgsqlCode);
+
+        // Assert
+        Assert.True(isValid);
+    }
+
+    [Fact]
+    public void QueryUtils_IsValidPlpgsql_InvalidCode_ReturnsFalse()
+    {
+        // Arrange
+        var invalidPlpgsqlCode = @"BEGIN
+                INVALID SYNTAX
+            END;";
+
+        // Act
+        var isValid = QueryUtils.IsValidPlpgsql(invalidPlpgsqlCode);
+
+        // Assert
+        Assert.False(isValid);
+    }
+
+    [Theory]
+    [InlineData("DO $$ BEGIN RETURN 42; END; $$", true)]
+    [InlineData("DO $$ BEGIN NULL; END; $$", true)]
+    [InlineData("INVALID", false)]
+    [InlineData("BEGIN", true)]
+    [InlineData("", true)]
+    public void QueryUtils_IsValidPlpgsql_VariousCodes_ReturnsExpected(string plpgsqlCode, bool expected)
+    {
+        // Act
+        var isValid = QueryUtils.IsValidPlpgsql(plpgsqlCode);
+
+        // Assert
+        Assert.Equal(expected, isValid);
+    }
+
+    #endregion
+
 }

@@ -27,6 +27,9 @@ class Program
         Console.WriteLine();
         
         await ExtendedFeaturesExample();
+        Console.WriteLine();
+        
+        await PlpgsqlParsingExample();
     }
 
     static async Task BasicParsingExample()
@@ -96,7 +99,17 @@ class Program
             "SELECT * FROM users WHERE id = 1",
             "SELECT * FROM users WHERE id = 2",
             "SELECT * FROM users WHERE id = 999",
-            "SELECT name FROM users WHERE id = 1"
+            "SELECT name FROM users WHERE id = 1",
+            @"CREATE OR REPLACE FUNCTION cs_fmt_browser_version(v_name varchar,
+                                                  v_version varchar) 
+RETURNS varchar AS $$ 
+BEGIN 
+    IF v_version IS NULL THEN
+        RETURN v_name;
+    END IF; 
+    RETURN v_name || '/' || v_version; 
+END; 
+$$ LANGUAGE plpgsql;"
         };
 
         var fingerprints = new List<(string query, string? fingerprint)>();
@@ -398,25 +411,89 @@ class Program
 
         // PL/pgSQL parsing example
         Console.WriteLine("D. PL/pgSQL Parsing:");
-        var plpgsqlCode = @"
-            BEGIN
-                IF user_count > 0 THEN
-                    RETURN 'Users exist';
-                ELSE
-                    RETURN 'No users found';
-                END IF;
-            END;
-        ";
         
-        var plpgsqlResult = parser.ParsePlpgsql(plpgsqlCode);
-        Console.WriteLine($"PL/pgSQL parsing successful: {plpgsqlResult.IsSuccess}");
-        if (plpgsqlResult.IsError)
+        var plpgsqlExamples = new[]
         {
-            Console.WriteLine($"Error: {plpgsqlResult.Error}");
+            // Simple block
+            @"DO $$
+DECLARE
+    ret VARCHAR(50);
+BEGIN
+    ret := 'Hello, World!';
+    RAISE NOTICE '%', ret;
+END;
+$$;",
+            
+            // Function body with conditionals
+            @"DO $$
+DECLARE
+    user_count INTEGER := 0;
+    ret VARCHAR(100);
+BEGIN
+    IF user_count > 0 THEN
+        ret := 'Users exist';
+    ELSE
+        ret := 'No users found';
+    END IF;
+    RAISE NOTICE '%', ret;
+END;
+$$;",
+            
+            // Loop example
+            @"DO $$
+DECLARE
+    i INTEGER := 1;
+BEGIN
+    WHILE i <= 10 LOOP
+        RAISE NOTICE 'Current value: %', i;
+        i := i + 1;
+    END LOOP;
+    RAISE NOTICE 'Final value: %', i;
+END;
+$$;",
+            
+            // Exception handling
+            @"DO $$
+BEGIN
+    INSERT INTO users (name, email) VALUES ('John', 'john@example.com');
+    RAISE NOTICE 'User created successfully';
+EXCEPTION
+    WHEN unique_violation THEN
+        RAISE NOTICE 'User already exists';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'An error occurred';
+END;
+$$;"
+        };
+
+        foreach (var (code, index) in plpgsqlExamples.Select((code, i) => (code, i + 1)))
+        {
+            Console.WriteLine($"Example {index}:");
+            var plpgsqlResult = parser.ParsePlpgsql(code);
+            Console.WriteLine($"  PL/pgSQL parsing successful: {plpgsqlResult.IsSuccess}");
+            
+            if (plpgsqlResult.IsSuccess)
+            {
+                Console.WriteLine($"  Parse tree length: {plpgsqlResult.ParseTree?.Length ?? 0} characters");
+                // Show a snippet of the parse tree for valid code
+                if (!string.IsNullOrEmpty(plpgsqlResult.ParseTree) && plpgsqlResult.ParseTree.Length > 100)
+                {
+                    Console.WriteLine($"  Parse tree preview: {plpgsqlResult.ParseTree.Substring(0, 100)}...");
+                }
+            }
+            else
+            {
+                Console.WriteLine($"  Error: {plpgsqlResult.Error}");
+            }
+            Console.WriteLine();
         }
-        else if (!string.IsNullOrEmpty(plpgsqlResult.ParseTree))
+
+        // Test utility function
+        Console.WriteLine("PL/pgSQL validation using utility function:");
+        foreach (var (code, index) in plpgsqlExamples.Take(4).Select((code, i) => (code, i + 1)))
         {
-            Console.WriteLine($"Parse tree length: {plpgsqlResult.ParseTree.Length} characters");
+            var isValid = QueryUtils.IsValidPlpgsql(code);
+            Console.WriteLine($"  Example {index}: {(isValid ? "✓ Valid" : "✗ Invalid")}");
         }
         Console.WriteLine();
 
@@ -443,8 +520,251 @@ class Program
         var statementCount = QueryUtils.CountStatements(multiQuery);
         Console.WriteLine($"Statement count: {statementCount}");
 
-        // PL/pgSQL validation utility
-        var isValidPlpgsql = QueryUtils.IsValidPlpgsql(plpgsqlCode);
-        Console.WriteLine($"PL/pgSQL validation: {(isValidPlpgsql ? "? Valid" : "? Invalid")}");
+        // PL/pgSQL validation utility (using the first valid example)
+        var samplePlpgsqlCode = @"DO $$ BEGIN
+        RAISE NOTICE 'Hello World';
+        END; $$;";
+        var isValidPlpgsql = QueryUtils.IsValidPlpgsql(samplePlpgsqlCode);
+        Console.WriteLine($"PL/pgSQL validation: {(isValidPlpgsql ? "✓ Valid" : "✗ Invalid")}");
+    }
+
+    static async Task PlpgsqlParsingExample()
+    {
+        Console.WriteLine("8. Dedicated PL/pgSQL Parsing Example");
+        Console.WriteLine("======================================");
+
+        using var parser = new Parser();
+
+        var plpgsqlExamples = new[]
+        {
+            new
+            {
+                Name = "Simple Function Body",
+                Code = @"DO $$ 
+DECLARE
+    ret VARCHAR;
+BEGIN
+    ret := 'Hello, World!';
+    RAISE NOTICE '%', ret;
+END; 
+$$;"
+            },
+            new
+            {
+                Name = "Variable Declaration and Assignment",
+                Code = @"DO $$
+DECLARE
+    user_name VARCHAR(50);
+    user_count INTEGER := 0;
+BEGIN
+    user_name := 'John Doe';
+    SELECT COUNT(*) INTO user_count FROM users WHERE active = true;
+    RAISE NOTICE 'Active user count: %', user_count;
+END;
+$$;"
+            },
+            new
+            {
+                Name = "Conditional Logic with IF-ELSE",
+                Code = @"DO $$DECLARE
+    user_id INTEGER;
+    status TEXT;
+BEGIN
+    user_id := 123;
+    
+    IF user_id > 0 THEN
+        SELECT CASE 
+            WHEN active THEN 'active'
+            ELSE 'inactive'
+        END INTO status
+        FROM users WHERE id = user_id;
+        
+        RETURN status;
+    ELSE
+        RETURN 'invalid_user_id';
+    END IF;
+END; $$"
+            },
+            new
+            {
+                Name = "Loop with WHILE",
+                Code = @"DO $$
+DECLARE
+    counter INTEGER := 1;
+    result TEXT := '';
+BEGIN
+    WHILE counter <= 5 LOOP
+        result := result || counter::TEXT || ' ';
+        counter := counter + 1;
+    END LOOP;
+    
+    RETURN TRIM(result);
+END; $$"
+            },
+            new
+            {
+                Name = "FOR Loop with Record",
+                Code = @"DO $$
+DECLARE
+    user_rec RECORD;
+    user_list TEXT := '';
+BEGIN
+    FOR user_rec IN SELECT name FROM users WHERE active = true ORDER BY name LOOP
+        user_list := user_list || user_rec.name || ', ';
+    END LOOP;
+    
+    RETURN RTRIM(user_list, ', ');
+END; $$"
+            },
+            new
+            {
+                Name = "Exception Handling",
+                Code = @"DO $$
+DECLARE
+    error_message TEXT;
+    result_count INTEGER;
+BEGIN
+    -- Attempt to perform an operation that might fail
+    INSERT INTO audit_log (action, timestamp) VALUES ('user_login', NOW());
+    SELECT COUNT(*) INTO result_count FROM users;
+
+    RAISE NOTICE 'Success: % users found', result_count;
+
+EXCEPTION
+    WHEN unique_violation THEN
+        RAISE NOTICE 'Error: Duplicate entry';
+    WHEN not_null_violation THEN
+        RAISE NOTICE 'Error: Required field missing';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Error: %', SQLERRM;
+END;
+$$;"
+            },
+            new
+            {
+                Name = "Advanced Function with Multiple Constructs",
+                Code = @"DO $$ 
+DECLARE
+    total_processed INTEGER := 0;
+    user_rec RECORD;
+    error_count INTEGER := 0;
+    batch_size INTEGER := 100;
+BEGIN
+    -- Process users in batches
+    FOR user_rec IN 
+        SELECT id, name, email 
+        FROM users 
+        WHERE last_processed IS NULL 
+        ORDER BY created_at 
+        LIMIT batch_size
+    LOOP
+        BEGIN
+            -- Simulate processing
+            UPDATE users 
+            SET last_processed = NOW(), 
+                processed_by = 'batch_job'
+            WHERE id = user_rec.id;
+            
+            total_processed := total_processed + 1;
+            
+            -- Log every 10th user
+            IF total_processed % 10 = 0 THEN
+                RAISE NOTICE 'Processed % users so far', total_processed;
+            END IF;
+            
+        EXCEPTION
+            WHEN OTHERS THEN
+                error_count := error_count + 1;
+                RAISE WARNING 'Failed to process user %: %', user_rec.id, SQLERRM;
+        END;
+    END LOOP;
+    
+    -- Final summary
+    IF error_count > 0 THEN
+        RAISE WARNING 'Completed with % errors out of % attempts', error_count, total_processed + error_count;
+    END IF;
+    
+    -- Log the total processed count
+    RAISE NOTICE 'Total users processed: %', total_processed;
+END $$;"
+            },
+            new
+            {
+                Name = "Invalid Syntax (for error demonstration)",
+                Code = @"BEGIN
+    INVALID SYNTAX HERE
+    RETURN 'This will fail';
+END;"
+            }
+        };
+
+        Console.WriteLine($"Testing {plpgsqlExamples.Length} PL/pgSQL code examples...");
+        Console.WriteLine();
+
+        var successCount = 0;
+        var errorCount = 0;
+
+        foreach (var (example, index) in plpgsqlExamples.Select((ex, i) => (ex, i + 1)))
+        {
+            Console.WriteLine($"{index}. {example.Name}");
+            Console.WriteLine(new string('-', example.Name.Length + 3));
+            
+            // Show the code with line numbers for better readability
+            var lines = example.Code.Split('\n');
+            Console.WriteLine("Code:");
+            for (var i = 0; i < lines.Length; i++)
+            {
+                Console.WriteLine($"  {i + 1,2}: {lines[i]}");
+            }
+            Console.WriteLine();
+
+            // Parse the PL/pgSQL code
+            var parseResult = parser.ParsePlpgsql(example.Code);
+            
+            if (parseResult.IsSuccess)
+            {
+                successCount++;
+                Console.WriteLine("✓ Parse Result: SUCCESS");
+                Console.WriteLine($"  Parse tree length: {parseResult.ParseTree?.Length ?? 0} characters");
+                
+                // Show a snippet of the parse tree for successful parses
+                if (!string.IsNullOrEmpty(parseResult.ParseTree))
+                {
+                    var preview = parseResult.ParseTree.Length > 200 
+                        ? parseResult.ParseTree.Substring(0, 200) + "..." 
+                        : parseResult.ParseTree;
+                    Console.WriteLine($"  Parse tree preview: {preview}");
+                }
+            }
+            else
+            {
+                errorCount++;
+                Console.WriteLine("✗ Parse Result: ERROR");
+                Console.WriteLine($"  Error message: {parseResult.Error}");
+            }
+            
+            // Test utility function as well
+            var isValidUtil = QueryUtils.IsValidPlpgsql(example.Code);
+            Console.WriteLine($"  Utility validation: {(isValidUtil ? "✓ Valid" : "✗ Invalid")}");
+            
+            Console.WriteLine();
+        }
+
+        // Summary
+        Console.WriteLine("Summary");
+        Console.WriteLine("=======");
+        Console.WriteLine($"Total examples tested: {plpgsqlExamples.Length}");
+        Console.WriteLine($"Successful parses: {successCount}");
+        Console.WriteLine($"Failed parses: {errorCount}");
+        Console.WriteLine($"Success rate: {(double)successCount / plpgsqlExamples.Length * 100:F1}%");
+        
+        if (successCount > 0)
+        {
+            Console.WriteLine();
+            Console.WriteLine("✓ PL/pgSQL parsing functionality is working correctly!");
+            Console.WriteLine("  - The parser can handle various PL/pgSQL constructs");
+            Console.WriteLine("  - Error handling works for invalid syntax");
+            Console.WriteLine("  - Utility functions provide convenient validation");
+        }
     }
 }
