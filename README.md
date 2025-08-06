@@ -30,17 +30,28 @@ dotnet add package Npgquery
 ```csharp
 using Npgquery;
 
-// Parse a query
 using var parser = new Parser();
-var result = parser.Parse("SELECT * FROM users WHERE id = 1");
+var queries = new[]
+{
+    "SELECT * FROM users WHERE id = 1",
+    "INSERT INTO posts (title, content) VALUES ('Hello', 'World')",
+    "INVALID SQL SYNTAX"
+};
 
-if (result.IsSuccess)
+foreach (var query in queries)
 {
-    Console.WriteLine($"Parse tree: {result.ParseTree}");
-}
-else
-{
-    Console.WriteLine($"Error: {result.Error}");
+    var result = parser.Parse(query);
+    Console.WriteLine($"Query: {query}");
+    Console.WriteLine($"Valid: {result.IsSuccess}");
+    if (result.IsSuccess)
+    {
+        Console.WriteLine($"Parse Tree Length: {result.ParseTree?.RootElement.ToString().Length ?? 0} characters");
+    }
+    else
+    {
+        Console.WriteLine($"Error: {result.Error}");
+    }
+    Console.WriteLine();
 }
 ```
 
@@ -48,86 +59,176 @@ else
 
 ```csharp
 using var parser = new Parser();
-var normalizeResult = parser.Normalize("SELECT * FROM users WHERE id = 1");
-Console.WriteLine($"Normalized: {normalizeResult.NormalizedQuery}");
-// Output: SELECT * FROM users WHERE id = $1
+var queries = new[]
+{
+    "SELECT * FROM users /* this is a comment */ WHERE id = 1",
+    "SELECT   *   FROM   users   WHERE   id   =   2  ",
+    "select name, email from users where active = true"
+};
+foreach (var query in queries)
+{
+    var result = parser.Normalize(query);
+    Console.WriteLine($"Original:   {query}");
+    Console.WriteLine($"Normalized: {result.NormalizedQuery}");
+    Console.WriteLine();
+}
 ```
 
 ### Query Fingerprinting
 
 ```csharp
 using var parser = new Parser();
-var query1 = "SELECT * FROM users WHERE id = 1";
-var query2 = "SELECT * FROM users WHERE id = 2";
-
-var fp1 = parser.Fingerprint(query1);
-var fp2 = parser.Fingerprint(query2);
-
-// Same structure, different values
-Console.WriteLine($"Same structure: {fp1.Fingerprint == fp2.Fingerprint}");
-```
-
-### Query Deparsing
-
-```csharp
-using var parser = new Parser();
-// Parse then deparse back to SQL
-var parseResult = parser.Parse("SELECT * FROM users WHERE id = 1");
-if (parseResult.IsSuccess && parseResult.ParseTree is not null)
+var queries = new[]
 {
-    var deparseResult = parser.Deparse(parseResult.ParseTree);
-    Console.WriteLine($"Deparsed: {deparseResult.Query}");
+    "SELECT * FROM users WHERE id = 1",
+    "SELECT * FROM users WHERE id = 2",
+    "SELECT * FROM users WHERE id = 999",
+    "SELECT name FROM users WHERE id = 1"
+};
+var fingerprints = new List<(string query, string? fingerprint)>();
+foreach (var query in queries)
+{
+    var result = parser.Fingerprint(query);
+    fingerprints.Add((query, result.Fingerprint));
+    Console.WriteLine($"Query: {query}");
+    Console.WriteLine($"Fingerprint: {result.Fingerprint}");
+    Console.WriteLine();
 }
-```
-
-### Statement Splitting
-
-```csharp
-using var parser = new Parser();
-var multiQuery = "SELECT 1; INSERT INTO test VALUES (1); UPDATE test SET col = 2;";
-var splitResult = parser.Split(multiQuery);
-
-if (splitResult.IsSuccess && splitResult.Statements is not null)
+// Check for similar queries
+for (int i = 0; i < fingerprints.Count; i++)
 {
-    foreach (var stmt in splitResult.Statements)
+    for (int j = i + 1; j < fingerprints.Count; j++)
     {
-        Console.WriteLine($"Statement: {stmt.Statement}");
-        Console.WriteLine($"Location: {stmt.Location}, Length: {stmt.Length}");
+        if (fingerprints[i].fingerprint == fingerprints[j].fingerprint)
+        {
+            Console.WriteLine($"Queries {i + 1} and {j + 1} have the same structure");
+        }
     }
 }
 ```
 
-### Query Tokenization
+### Utility Functions
 
 ```csharp
-using var parser = new Parser();
-var scanResult = parser.Scan("SELECT COUNT(*) FROM users");
-if (scanResult.IsSuccess && scanResult.Tokens is not null)
-{
-    foreach (var token in scanResult.Tokens)
-    {
-        Console.WriteLine($"Token: {token.Token}, Keyword: {token.KeywordKind}");
-    }
-}
-```
-
-### PL/pgSQL Parsing
-
-```csharp
-using var parser = new Parser();
-var plpgsqlCode = @"
-    BEGIN
-        IF user_count > 0 THEN
-            RETURN 'Users exist';
-        END IF;
-    END;
+var complexQuery = @"
+    SELECT u.name, u.email, p.title, c.content
+    FROM users u
+    JOIN posts p ON u.id = p.user_id
+    LEFT JOIN comments c ON p.id = c.post_id
+    WHERE u.active = true
+    AND p.published_at > '2023-01-01'
+    ORDER BY p.published_at DESC
+    LIMIT 10
 ";
-
-var plpgsqlResult = parser.ParsePlpgsql(plpgsqlCode);
-if (plpgsqlResult.IsSuccess)
+// Extract table names
+var tables = QueryUtils.ExtractTableNames(complexQuery);
+Console.WriteLine("Tables found:");
+foreach (var table in tables)
 {
-    Console.WriteLine($"PL/pgSQL parse tree: {plpgsqlResult.ParseTree}");
+    Console.WriteLine($"  - {table}");
 }
+// Get query type
+var queryType = QueryUtils.GetQueryType(complexQuery);
+Console.WriteLine($"Query type: {queryType}");
+// Clean query
+var cleaned = QueryUtils.CleanQuery(complexQuery);
+Console.WriteLine("Cleaned query:");
+Console.WriteLine(cleaned);
+// Validate multiple queries
+var testQueries = new[]
+{
+    "SELECT 1",
+    "INVALID SQL",
+    "INSERT INTO test VALUES (1)",
+    "DELETE FROM test WHERE id = 1"
+};
+var validationResults = QueryUtils.ValidateQueries(testQueries);
+Console.WriteLine("Validation results:");
+foreach (var (query, isValid) in validationResults)
+{
+    Console.WriteLine($"  {query}: {(isValid ? "✓ Valid" : "✗ Invalid")}");
+}
+```
+
+### Async Parsing
+
+```csharp
+using Npgquery;
+using var parser = new Parser();
+var query = "SELECT * FROM users WHERE created_at > '2023-01-01'";
+var result = await parser.ParseAsync(query);
+Console.WriteLine($"Async parse successful: {result.IsSuccess}");
+// Static async methods
+var quickResult = await ParserAsync.QuickParseAsync("SELECT version()");
+Console.WriteLine($"Quick async parse successful: {quickResult.IsSuccess}");
+```
+
+### Batch Processing Example
+
+```csharp
+var sqlQueries = new[]
+{
+    "-- User management queries",
+    "SELECT * FROM users WHERE active = true;",
+    "UPDATE users SET last_login = NOW() WHERE id = 1;",
+    "-- This is an invalid query",
+    "SELECT * FORM users;", // Typo: FORM instead of FROM
+    "DELETE FROM users WHERE id = 999;",
+    "-- Post queries",
+    "SELECT p.*, u.name FROM posts p JOIN users u ON p.user_id = u.id;",
+    "INSERT INTO posts (title, content, user_id) VALUES ('Test', 'Content', 1);"
+};
+var validQueries = new List<string>();
+var invalidQueries = new List<(string query, string error)>();
+using var parser = new Parser();
+foreach (var query in sqlQueries)
+{
+    var trimmed = query.Trim();
+    if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith("--"))
+        continue;
+    var result = parser.Parse(trimmed);
+    if (result.IsSuccess)
+    {
+        validQueries.Add(trimmed);
+        var queryType = QueryUtils.GetQueryType(trimmed);
+        var tables = QueryUtils.ExtractTableNames(trimmed);
+        Console.WriteLine($"✓ {queryType} query affecting tables: {string.Join(", ", tables)}");
+    }
+    else
+    {
+        invalidQueries.Add((trimmed, result.Error!));
+        Console.WriteLine($"✗ Invalid query: {trimmed}");
+        Console.WriteLine($"  Error: {result.Error}");
+    }
+}
+Console.WriteLine($"Valid queries: {validQueries.Count}");
+Console.WriteLine($"Invalid queries: {invalidQueries.Count}");
+```
+
+### PL/pgSQL Parsing and Validation
+
+```csharp
+using var parser = new Parser();
+var plpgsqlCode = @"DO $$
+DECLARE
+    ret VARCHAR;
+BEGIN
+    ret := 'Hello, World!';
+    RAISE NOTICE '%', ret;
+END;
+$$;";
+var parseResult = parser.ParsePlpgsql(plpgsqlCode);
+if (parseResult.IsSuccess)
+{
+    Console.WriteLine($"PL/pgSQL parse tree: {parseResult.ParseTree}");
+}
+else
+{
+    Console.WriteLine($"Error: {parseResult.Error}");
+}
+// Utility validation
+var isValid = QueryUtils.IsValidPlpgsql(plpgsqlCode);
+Console.WriteLine($"Utility validation: {(isValid ? "✓ Valid" : "✗ Invalid")}");
 ```
 
 ## Complete API Reference
@@ -323,7 +424,17 @@ Parse a PL/pgSQL code block.
 
 ```csharp
 using var parser = new Parser();
-var plpgsqlCode = "BEGIN IF id > 0 THEN RAISE NOTICE 'ID is positive'; END IF; END;";
+var plpgsqlCode = @"DO $$
+DECLARE
+    id INTEGER := 5;
+BEGIN
+    IF id > 0 THEN
+        RAISE NOTICE 'ID is positive';
+    ELSE
+        RAISE NOTICE 'ID is not positive';
+    END IF;
+END;
+$$;";
 
 var plpgsqlResult = parser.ParsePlpgsql(plpgsqlCode);
 if (plpgsqlResult.IsSuccess)
