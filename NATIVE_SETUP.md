@@ -20,17 +20,8 @@ Npgquery requires the native `libpg_query` library to function. This library emb
 
 ## Installation Options
 
-### Option 1: NuGet Package (Recommended)
-The NuGet package includes pre-compiled native libraries for all supported platforms:
 
-```bash
-dotnet add package Npgquery
-```
-
-The native libraries will be automatically included in your application's output directory.
-
-### Option 2: Manual Installation
-If you prefer to manage the native libraries manually:
+### Manual Installation
 
 1. Download the appropriate native library for your platform from the [libpg_query releases](https://github.com/pganalyze/libpg_query/releases)
 2. Place the library file in one of these locations:

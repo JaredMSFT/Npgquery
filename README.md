@@ -17,11 +17,6 @@ A high-performance .NET 9 C# library for parsing PostgreSQL queries using the ba
 - **Strong typing** with nullable reference types and records.
 - **High performance** with parallel processing capabilities.
 
-## Installation
-
-```bash
-dotnet add package Npgquery
-```
 
 ## Quick Start
 
