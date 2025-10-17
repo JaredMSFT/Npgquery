@@ -209,8 +209,16 @@ public static class QueryUtils
                 foreach (var property in element.EnumerateObject())
                 {
                     if (!property.Name.Equals("stmt", StringComparison.OrdinalIgnoreCase) && property.Name.EndsWith("Stmt", StringComparison.OrdinalIgnoreCase))
-                        return property.Name.Replace("Stmt", "", StringComparison.OrdinalIgnoreCase).ToUpperInvariant();
-                    
+                    {
+                        // Replace("Stmt", "", StringComparison.OrdinalIgnoreCase) is unavailable on older TFMs; trim suffix manually.
+                        var name = property.Name;
+                        if (name.Length >= 4 && name.EndsWith("Stmt", StringComparison.OrdinalIgnoreCase))
+                        {
+                            name = name.Substring(0, name.Length - 4);
+                        }
+                        return name.ToUpperInvariant();
+                    }
+
                     var result = property.Value.ValueKind switch
                     {
                         JsonValueKind.Object => ExtractQueryTypeFromJson(property.Value),
@@ -219,11 +227,11 @@ public static class QueryUtils
                             .FirstOrDefault(r => r != null),
                         _ => null
                     };
-                    
+
                     if (result != null) return result;
                 }
                 break;
-                
+
             case JsonValueKind.Array:
                 return element.EnumerateArray()
                     .Select(ExtractQueryTypeFromJson)

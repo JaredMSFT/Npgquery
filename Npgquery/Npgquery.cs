@@ -195,8 +195,8 @@ public sealed class Parser : IDisposable
     /// </summary>
     public DeparseResult Deparse(JsonDocument parseTree)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
-        ArgumentNullException.ThrowIfNull(parseTree);
+        if (_disposed) throw new ObjectDisposedException(nameof(Parser));
+        if (parseTree is null) throw new ArgumentNullException(nameof(parseTree));
 
         try
         {
@@ -272,8 +272,8 @@ public sealed class Parser : IDisposable
     /// </summary>
     public DeparseResult DeparseProtobuf(ProtobufParseResult parseResult)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
-        ArgumentNullException.ThrowIfNull(parseResult);
+        if (_disposed) throw new ObjectDisposedException(nameof(Parser));
+        if (parseResult is null) throw new ArgumentNullException(nameof(parseResult));
 
         if (parseResult.IsError || parseResult.ParseTree == null)
         {
@@ -357,8 +357,8 @@ public sealed class Parser : IDisposable
     // Helper methods
     private void ThrowIfDisposedOrNull(string parameter)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
-        ArgumentNullException.ThrowIfNull(parameter);
+        if (_disposed) throw new ObjectDisposedException(nameof(Parser));
+        if (parameter is null) throw new ArgumentNullException(nameof(parameter));
     }
 
     private static string? ExtractError(IntPtr errorPtr)

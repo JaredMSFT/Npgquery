@@ -1,52 +1,60 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFramework>net9.0</TargetFramework>
-		<ImplicitUsings>enable</ImplicitUsings>
+		<Authors>JaredMSFT</Authors>
+		<ClientVersion>1.0.0</ClientVersion>
+		<IsPreview>false</IsPreview>
+		<VersionSuffix Condition=" '$(IsPreview)' == 'true' ">preview</VersionSuffix>
+		<Version Condition=" '$(VersionSuffix)' == '' ">$(ClientVersion)</Version>
+		<Version Condition=" '$(VersionSuffix)' != '' ">$(ClientVersion)-$(VersionSuffix)</Version>
+		<AssemblyVersion>$(Version)</AssemblyVersion>
+		<FileVersion>$(Version)</FileVersion>
+		<InformationalVersion>$(ClientVersion)</InformationalVersion>
+		<FileVersion>$(ClientVersion)</FileVersion>
+		<TargetFrameworks>net9.0;net8.0;net472;netstandard2.1</TargetFrameworks>
+		<LangVersion>13.0</LangVersion>
+		<CurrentDate>$([System.DateTime]::Now.ToString(yyyyMMdd))</CurrentDate>
 		<Nullable>enable</Nullable>
-		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-		
-		<!-- Package Information -->
+		<NeutralLanguage>en-US</NeutralLanguage>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<AssemblyName>Npgquery</AssemblyName>
+		<RootNamespace>Npgquery</RootNamespace>
 		<PackageId>Npgquery</PackageId>
-		<PackageVersion>1.0.0</PackageVersion>
-		<Title>Npgquery - PostgreSQL Query Parser for .NET</Title>
-		<Authors>Npgquery Contributors</Authors>
-		<Company>Npgquery</Company>
-		<Product>Npgquery</Product>
-		<Description>A high-performance .NET library for parsing PostgreSQL queries using the official PostgreSQL parser via libpg_query. Supports SQL parsing to AST, query normalization, fingerprinting, statement splitting, tokenization, and PL/pgSQL parsing with full async support.</Description>
-		<Summary>PostgreSQL query parser for .NET with AST generation, normalization, and fingerprinting capabilities</Summary>
-		<PackageTags>postgresql;sql;parser;ast;query;normalization;fingerprinting;plpgsql;tokenization;cross-platform</PackageTags>
-		<RepositoryUrl>https://github.com/yourusername/Npgquery</RepositoryUrl>
+		<PackageTags>postgres;libpg_query;postgresql;sql;parser;ast;query;normalization;fingerprinting;plpgsql;tokenization;</PackageTags>
+		<IsPackable>true</IsPackable>
+		<IsShipping>true</IsShipping>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<PlatformTarget>AnyCPU</PlatformTarget>
+		<ShippingScope>External</ShippingScope>
+		<SigningType>Product</SigningType>
+		<RepositoryUrl>https://github.com/JaredMSFT/Npgquery</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
-		<PackageProjectUrl>https://github.com/yourusername/Npgquery</PackageProjectUrl>
+		<PackageProjectUrl>https://github.com/JaredMSFT/Npgquery</PackageProjectUrl>
 		<PackageLicenseFile>LICENSE</PackageLicenseFile>
 		<PackageReadmeFile>PACKAGE_README.md</PackageReadmeFile>
 		<PackageReleaseNotes>Initial release of Npgquery v1.0.0 with full PostgreSQL query parsing capabilities.</PackageReleaseNotes>
-		<Copyright>Copyright (c) 2025 Npgquery Contributors</Copyright>
-		
-		<!-- Build Configuration -->
-		<AssemblyVersion>1.0.0.0</AssemblyVersion>
-		<FileVersion>1.0.0.0</FileVersion>
-		<InformationalVersion>1.0.0</InformationalVersion>
-		
-		<!-- Documentation -->
+		<TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+		<EnableDefaultCompileItems>true</EnableDefaultCompileItems>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
-		
-		<!-- Repository and CI/CD -->
 		<PublishRepositoryUrl>true</PublishRepositoryUrl>
 		<EmbedUntrackedSources>true</EmbedUntrackedSources>
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<Description>A high-performance .NET library for parsing PostgreSQL queries using the official PostgreSQL parser via libpg_query. Supports SQL parsing to AST, query normalization, fingerprinting, statement splitting, tokenization, and PL/pgSQL parsing with full async support.</Description>
+		<Summary>PostgreSQL query parser for .NET with AST generation, normalization, and fingerprinting capabilities</Summary>
+		<Copyright>© Npgquery All rights reserved.</Copyright>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<ImplicitUsings>true</ImplicitUsings>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<PackageReference Include="Google.Protobuf" Version="3.31.1" />
 		<PackageReference Include="Grpc.Tools" Version="2.59.0" PrivateAssets="All" />
-		<PackageReference Include="System.Text.Json" Version="9.0.0" />
 		<PackageReference Include="System.Memory" Version="4.5.5" />
 		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
+		<PackageReference Include="System.Text.Json" Condition="'$(TargetFramework)' == 'net472' or '$(TargetFramework)' == 'net6.0' or '$(TargetFramework)' == 'netstandard2.0' or '$(TargetFramework)' == 'netstandard2.1'" Version="8.0.5" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -57,10 +65,6 @@
 
 	<ItemGroup>
 		<Protobuf Include="Protos\pg_query.proto" GrpcServices="Client" />
-	</ItemGroup>
-
-	<ItemGroup>
-	  <Folder Include="Protobuf\" />
 	</ItemGroup>
 
 </Project>

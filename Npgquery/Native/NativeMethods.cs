@@ -173,8 +173,25 @@ internal static unsafe class NativeMethods {
     #region Native Helper Methods
 
     internal static string? PtrToString(IntPtr ptr) {
-        return ptr == IntPtr.Zero ? null : Marshal.PtrToStringUTF8(ptr);
+        if (ptr == IntPtr.Zero) return null;
+#if NET472
+        return PtrToStringUtf8Compat(ptr);
+#else
+        return Marshal.PtrToStringUTF8(ptr);
+#endif
     }
+
+#if NET472
+    // Fallback implementation for UTF8 pointer -> string conversion (net472 lacks Marshal.PtrToStringUTF8)
+    private static string? PtrToStringUtf8Compat(IntPtr ptr)
+    {
+        if (ptr == IntPtr.Zero) return null;
+        byte* bytes = (byte*)ptr;
+        int len = 0;
+        while (bytes[len] != 0) len++;
+        return Encoding.UTF8.GetString(bytes, len);
+    }
+#endif
 
     internal static byte[] StringToUtf8Bytes(string input) {
         var bytes = Encoding.UTF8.GetBytes(input);
