@@ -8,7 +8,7 @@ on:
 
 env:
   BuildConfiguration: Release
-  PROJECT_PATH: 'src/Npgquery.csproj'
+  PROJECT_PATH: 'Npgquery/Npgquery.csproj'
   PACKAGE_OUTPUT_DIRECTORY: '/github/workspace/packages'
 
 jobs:
