@@ -6,6 +6,9 @@ on:
         description: 'The version to release (e.g., 1.0.0)'
         required: true
 
+permissions:
+  id-token: write  # enable GitHub OIDC token issuance for this job
+
 env:
   BuildConfiguration: Release
   PROJECT_PATH: 'Npgquery/Npgquery.csproj'
@@ -35,6 +38,14 @@ jobs:
 
     - name: Create NuGet Symbols Package
       run: dotnet pack ${{ env.PROJECT_PATH }} -c ${{ env.BuildConfiguration }} --no-build --include-symbols /p:SymbolPackageFormat=snupkg --no-restore -o ${{ env.PACKAGE_OUTPUT_DIRECTORY }}
-
-    - name: Push to Nuget
-      run: dotnet nuget push "${{env.PACKAGE_OUTPUT_DIRECTORY}}/${{env.PROJECT_NAME}}.${{github.event.inputs.version.nupkg}}" --api-key "${{ secrets.PAT }}" --source "github"
+      
+    # Get a short-lived NuGet API key
+    - name: NuGet login (OIDC → temp API key)
+      uses: NuGet/login@v1
+      id: login
+      with:
+        user: ${{ secrets.NUGET_USER }}
+    
+    # Push the package
+    - name: NuGet push
+      run: dotnet nuget push "${{env.PACKAGE_OUTPUT_DIRECTORY}}/${{PROJECT_NAME}}.${{github.event.inputs.version.nupkg}}" --api-key ${{steps.login.outputs.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json
