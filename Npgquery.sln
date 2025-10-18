@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.14.36212.18 d17.14
+# Visual Studio Version 18
+VisualStudioVersion = 18.0.11109.219 d18.0-oob
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgquery", "Npgquery\Npgquery.csproj", "{C3F17B45-75FF-427F-A948-C49CD2B37199}"
 EndProject

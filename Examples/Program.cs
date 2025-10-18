@@ -1,44 +1,44 @@
 using Npgquery;
 
 namespace Examples;
-class Program
-{
-    static async Task Main(string[] args)
-    {
+
+class Program {
+#if !NETSTANDARD2_0
+    static async Task Main(string[] args) {
         Console.WriteLine("Npgquery Examples");
         Console.WriteLine("===================");
 
         await BasicParsingExample();
         Console.WriteLine();
-        
+
         await NormalizationExample();
         Console.WriteLine();
-        
+
         await FingerprintingExample();
         Console.WriteLine();
-        
+
         await UtilityFunctionsExample();
         Console.WriteLine();
-        
+
         await AsyncExample();
         Console.WriteLine();
-        
+
         await BatchProcessingExample();
         Console.WriteLine();
-        
+
         await ExtendedFeaturesExample();
         Console.WriteLine();
-        
+
         await PlpgsqlParsingExample();
     }
+#endif
 
-    static async Task BasicParsingExample()
-    {
+    static async Task BasicParsingExample() {
         Console.WriteLine("1. Basic Parsing Example");
         Console.WriteLine("------------------------");
 
         using var parser = new Parser();
-        
+
         var queries = new[]
         {
             "SELECT * FROM users WHERE id = 1",
@@ -46,31 +46,27 @@ class Program
             "INVALID SQL SYNTAX"
         };
 
-        foreach (var query in queries)
-        {
+        foreach (var query in queries) {
             var result = parser.Parse(query);
             Console.WriteLine($"Query: {query}");
             Console.WriteLine($"Valid: {result.IsSuccess}");
-            
-            if (result.IsSuccess)
-            {
+
+            if (result.IsSuccess) {
                 Console.WriteLine($"Parse Tree Length: {result.ParseTree?.RootElement.ToString().Length ?? 0} characters");
             }
-            else
-            {
+            else {
                 Console.WriteLine($"Error: {result.Error}");
             }
             Console.WriteLine();
         }
     }
 
-    static async Task NormalizationExample()
-    {
+    static async Task NormalizationExample() {
         Console.WriteLine("2. Normalization Example");
         Console.WriteLine("------------------------");
 
         using var parser = new Parser();
-        
+
         var queries = new[]
         {
             "SELECT * FROM users /* this is a comment */ WHERE id = 1",
@@ -78,8 +74,7 @@ class Program
             "select name, email from users where active = true"
         };
 
-        foreach (var query in queries)
-        {
+        foreach (var query in queries) {
             var result = parser.Normalize(query);
             Console.WriteLine($"Original:   {query}");
             Console.WriteLine($"Normalized: {result.NormalizedQuery}");
@@ -87,13 +82,12 @@ class Program
         }
     }
 
-    static async Task FingerprintingExample()
-    {
+    static async Task FingerprintingExample() {
         Console.WriteLine("3. Fingerprinting Example");
         Console.WriteLine("-------------------------");
 
         using var parser = new Parser();
-        
+
         var queries = new[]
         {
             "SELECT * FROM users WHERE id = 1",
@@ -113,9 +107,8 @@ $$ LANGUAGE plpgsql;"
         };
 
         var fingerprints = new List<(string query, string? fingerprint)>();
-        
-        foreach (var query in queries)
-        {
+
+        foreach (var query in queries) {
             var result = parser.Fingerprint(query);
             fingerprints.Add((query, result.Fingerprint));
             Console.WriteLine($"Query: {query}");
@@ -125,12 +118,9 @@ $$ LANGUAGE plpgsql;"
 
         // Check for similar queries
         Console.WriteLine("Similar query analysis:");
-        for (int i = 0; i < fingerprints.Count; i++)
-        {
-            for (int j = i + 1; j < fingerprints.Count; j++)
-            {
-                if (fingerprints[i].fingerprint == fingerprints[j].fingerprint)
-                {
+        for (int i = 0; i < fingerprints.Count; i++) {
+            for (int j = i + 1; j < fingerprints.Count; j++) {
+                if (fingerprints[i].fingerprint == fingerprints[j].fingerprint) {
                     Console.WriteLine($"Queries {i + 1} and {j + 1} have the same structure");
                 }
             }
@@ -138,8 +128,7 @@ $$ LANGUAGE plpgsql;"
         Console.WriteLine();
     }
 
-    static async Task UtilityFunctionsExample()
-    {
+    static async Task UtilityFunctionsExample() {
         Console.WriteLine("4. Utility Functions Example");
         Console.WriteLine("-----------------------------");
 
@@ -157,8 +146,7 @@ $$ LANGUAGE plpgsql;"
         // Extract table names
         var tables = QueryUtils.ExtractTableNames(complexQuery);
         Console.WriteLine("Tables found:");
-        foreach (var table in tables)
-        {
+        foreach (var table in tables) {
             Console.WriteLine($"  - {table}");
         }
         Console.WriteLine();
@@ -185,14 +173,12 @@ $$ LANGUAGE plpgsql;"
 
         var validationResults = QueryUtils.ValidateQueries(testQueries);
         Console.WriteLine("Validation results:");
-        foreach (var (query, isValid) in validationResults)
-        {
-            Console.WriteLine($"  {query}: {(isValid ? "? Valid" : "? Invalid")}");
+        foreach (var result in validationResults) {
+            Console.WriteLine($"  {result.Key}: {(result.Value ? "? Valid" : "? Invalid")}");
         }
     }
 
-    static async Task AsyncExample()
-    {
+    static async Task AsyncExample() {
         Console.WriteLine("5. Async Operations Example");
         Console.WriteLine("----------------------------");
 
@@ -226,8 +212,7 @@ $$ LANGUAGE plpgsql;"
         Console.WriteLine($"Quick async parse successful: {quickResult.IsSuccess}");
     }
 
-    static async Task BatchProcessingExample()
-    {
+    static async Task BatchProcessingExample() {
         Console.WriteLine("6. Batch Processing Example");
         Console.WriteLine("----------------------------");
 
@@ -252,28 +237,24 @@ $$ LANGUAGE plpgsql;"
 
         using var parser = new Parser();
 
-        foreach (var query in sqlQueries)
-        {
+        foreach (var sql in sqlQueries) {
             // Skip comments and empty lines
-            var trimmed = query.Trim();
-            if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith("--"))
-            {
+            var trimmed = sql.Trim();
+            if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith("--")) {
                 continue;
             }
 
             var result = parser.Parse(trimmed);
-            if (result.IsSuccess)
-            {
+            if (result.IsSuccess) {
                 validQueries.Add(trimmed);
-                
+
                 // Extract metadata
                 var queryType = QueryUtils.GetQueryType(trimmed);
                 var tables = QueryUtils.ExtractTableNames(trimmed);
-                
+
                 Console.WriteLine($"? {queryType} query affecting tables: {string.Join(", ", tables)}");
             }
-            else
-            {
+            else {
                 invalidQueries.Add((trimmed, result.Error!));
                 Console.WriteLine($"? Invalid query: {trimmed}");
                 Console.WriteLine($"  Error: {result.Error}");
@@ -281,51 +262,42 @@ $$ LANGUAGE plpgsql;"
         }
 
         Console.WriteLine();
-        Console.WriteLine($"Summary:");
+        Console.WriteLine("Summary:");
         Console.WriteLine($"  Valid queries: {validQueries.Count}");
         Console.WriteLine($"  Invalid queries: {invalidQueries.Count}");
 
-        if (validQueries.Any())
-        {
+        if (validQueries.Any()) {
             Console.WriteLine();
             Console.WriteLine("Generating fingerprints for valid queries...");
             var fingerprints = new Dictionary<string, List<string>>();
 
-            foreach (var query in validQueries)
-            {
-                var fp = parser.Fingerprint(query);
-                if (fp.IsSuccess && fp.Fingerprint != null)
-                {
-                    if (!fingerprints.ContainsKey(fp.Fingerprint))
-                    {
+            foreach (var vquery in validQueries) {
+                var fp = parser.Fingerprint(vquery);
+                if (fp.IsSuccess && fp.Fingerprint != null) {
+                    if (!fingerprints.ContainsKey(fp.Fingerprint)) {
                         fingerprints[fp.Fingerprint] = new List<string>();
                     }
-                    fingerprints[fp.Fingerprint].Add(query);
+                    fingerprints[fp.Fingerprint].Add(vquery);
                 }
             }
 
             var duplicateStructures = fingerprints.Where(kvp => kvp.Value.Count > 1).ToList();
-            if (duplicateStructures.Any())
-            {
+            if (duplicateStructures.Any()) {
                 Console.WriteLine("Found queries with similar structures:");
-                foreach (var (fingerprint, similarQueries) in duplicateStructures)
-                {
-                    Console.WriteLine($"  Fingerprint: {fingerprint}");
-                    foreach (var similarQuery in similarQueries)
-                    {
+                foreach (var structure in duplicateStructures) {
+                    Console.WriteLine($"  Fingerprint: {structure.Key}");
+                    foreach (var similarQuery in structure.Value) {
                         Console.WriteLine($"    - {similarQuery}");
                     }
                 }
             }
-            else
-            {
+            else {
                 Console.WriteLine("No duplicate query structures found.");
             }
         }
     }
 
-    static async Task ExtendedFeaturesExample()
-    {
+    static async Task ExtendedFeaturesExample() {
         Console.WriteLine("7. Extended Features Example");
         Console.WriteLine("----------------------------");
 
@@ -340,13 +312,10 @@ $$ LANGUAGE plpgsql;"
         ";
 
         var splitResult = parser.Split(multiQuery);
-        if (splitResult.IsSuccess && splitResult.Statements != null)
-        {
+        if (splitResult.IsSuccess && splitResult.Statements != null) {
             Console.WriteLine($"Found {splitResult.Statements.Length} statements:");
-            foreach (var stmt in splitResult.Statements)
-            {
-                if (!string.IsNullOrWhiteSpace(stmt.Statement))
-                {
+            foreach (var stmt in splitResult.Statements) {
+                if (!string.IsNullOrWhiteSpace(stmt.Statement)) {
                     Console.WriteLine($"  - {stmt.Statement.Trim()}");
                 }
             }
@@ -357,35 +326,31 @@ $$ LANGUAGE plpgsql;"
         Console.WriteLine("B. Query Tokenization:");
         var query = "SELECT COUNT(*) FROM users WHERE created_at > '2023-01-01'";
         var scanResult = parser.Scan(query);
-        
+
         Console.WriteLine($"Query: {query}");
         Console.WriteLine($"Scan successful: {scanResult.IsSuccess}");
-        
-        if (scanResult.IsSuccess && scanResult.Tokens != null)
-        {
+
+        if (scanResult.IsSuccess && scanResult.Tokens != null) {
             Console.WriteLine($"PostgreSQL Version: {scanResult.Version}");
             Console.WriteLine($"Found {scanResult.Tokens.Length} tokens:");
-            
+
             foreach (var token in scanResult.Tokens.Take(10)) // Show first 10 tokens
             {
                 Console.WriteLine($"  '{token.Text}' -> {token.TokenKind} ({token.KeywordKind}) at position {token.Start}-{token.End}");
             }
-            
-            if (scanResult.Tokens.Length > 10)
-            {
+
+            if (scanResult.Tokens.Length > 10) {
                 Console.WriteLine($"  ... and {scanResult.Tokens.Length - 10} more tokens");
             }
         }
-        else if (scanResult.IsError)
-        {
+        else if (scanResult.IsError) {
             Console.WriteLine($"Scan failed: {scanResult.Error}");
         }
-        
-        if (!string.IsNullOrEmpty(scanResult.Stderr))
-        {
+
+        if (!string.IsNullOrEmpty(scanResult.Stderr)) {
             Console.WriteLine($"Stderr: {scanResult.Stderr}");
         }
-        
+
         Console.WriteLine();
 
         // Round-trip example (parse then deparse)
@@ -394,16 +359,13 @@ $$ LANGUAGE plpgsql;"
         Console.WriteLine($"Original: {originalQuery}");
 
         var parseResult = parser.Parse(originalQuery);
-        if (parseResult.IsSuccess && parseResult.ParseTree is not null)
-        {
+        if (parseResult.IsSuccess && parseResult.ParseTree is not null) {
             var deparseResult = parser.Deparse(parseResult.ParseTree);
-            if (deparseResult.IsSuccess)
-            {
+            if (deparseResult.IsSuccess) {
                 Console.WriteLine($"Deparsed: {deparseResult.Query}");
                 Console.WriteLine($"Round-trip successful: {!string.IsNullOrEmpty(deparseResult.Query)}");
             }
-            else
-            {
+            else {
                 Console.WriteLine($"Deparse failed: {deparseResult.Error}");
             }
         }
@@ -411,7 +373,7 @@ $$ LANGUAGE plpgsql;"
 
         // PL/pgSQL parsing example
         Console.WriteLine("D. PL/pgSQL Parsing:");
-        
+
         var plpgsqlExamples = new[]
         {
             // Simple block
@@ -466,23 +428,19 @@ END;
 $$;"
         };
 
-        foreach (var (code, index) in plpgsqlExamples.Select((code, i) => (code, i + 1)))
-        {
+        foreach (var (code, index) in plpgsqlExamples.Select((code, i) => (code, i + 1))) {
             Console.WriteLine($"Example {index}:");
             var plpgsqlResult = parser.ParsePlpgsql(code);
             Console.WriteLine($"  PL/pgSQL parsing successful: {plpgsqlResult.IsSuccess}");
-            
-            if (plpgsqlResult.IsSuccess)
-            {
+
+            if (plpgsqlResult.IsSuccess) {
                 Console.WriteLine($"  Parse tree length: {plpgsqlResult.ParseTree?.Length ?? 0} characters");
                 // Show a snippet of the parse tree for valid code
-                if (!string.IsNullOrEmpty(plpgsqlResult.ParseTree) && plpgsqlResult.ParseTree.Length > 100)
-                {
+                if (!string.IsNullOrEmpty(plpgsqlResult.ParseTree) && plpgsqlResult.ParseTree.Length > 100) {
                     Console.WriteLine($"  Parse tree preview: {plpgsqlResult.ParseTree.Substring(0, 100)}...");
                 }
             }
-            else
-            {
+            else {
                 Console.WriteLine($"  Error: {plpgsqlResult.Error}");
             }
             Console.WriteLine();
@@ -490,8 +448,7 @@ $$;"
 
         // Test utility function
         Console.WriteLine("PL/pgSQL validation using utility function:");
-        foreach (var (code, index) in plpgsqlExamples.Take(4).Select((code, i) => (code, i + 1)))
-        {
+        foreach (var (code, index) in plpgsqlExamples.Take(4).Select((code, i) => (code, i + 1))) {
             var isValid = QueryUtils.IsValidPlpgsql(code);
             Console.WriteLine($"  Example {index}: {(isValid ? "✓ Valid" : "✗ Invalid")}");
         }
@@ -499,7 +456,7 @@ $$;"
 
         // Utility functions example
         Console.WriteLine("E. Enhanced Utility Functions:");
-        
+
         // Split statements utility
         var statements = QueryUtils.SplitStatements(multiQuery);
         Console.WriteLine($"Split {statements.Count} statements using utility function");
@@ -528,8 +485,7 @@ $$;"
         Console.WriteLine($"PL/pgSQL validation: {(isValidPlpgsql ? "✓ Valid" : "✗ Invalid")}");
     }
 
-    static async Task PlpgsqlParsingExample()
-    {
+    static async Task PlpgsqlParsingExample() {
         Console.WriteLine("8. Dedicated PL/pgSQL Parsing Example");
         Console.WriteLine("======================================");
 
@@ -704,49 +660,44 @@ END;"
         var successCount = 0;
         var errorCount = 0;
 
-        foreach (var (example, index) in plpgsqlExamples.Select((ex, i) => (ex, i + 1)))
-        {
+        foreach (var (example, index) in plpgsqlExamples.Select((ex, i) => (ex, i + 1))) {
             Console.WriteLine($"{index}. {example.Name}");
             Console.WriteLine(new string('-', example.Name.Length + 3));
-            
+
             // Show the code with line numbers for better readability
             var lines = example.Code.Split('\n');
             Console.WriteLine("Code:");
-            for (var i = 0; i < lines.Length; i++)
-            {
+            for (var i = 0; i < lines.Length; i++) {
                 Console.WriteLine($"  {i + 1,2}: {lines[i]}");
             }
             Console.WriteLine();
 
             // Parse the PL/pgSQL code
             var parseResult = parser.ParsePlpgsql(example.Code);
-            
-            if (parseResult.IsSuccess)
-            {
+
+            if (parseResult.IsSuccess) {
                 successCount++;
                 Console.WriteLine("✓ Parse Result: SUCCESS");
                 Console.WriteLine($"  Parse tree length: {parseResult.ParseTree?.Length ?? 0} characters");
-                
+
                 // Show a snippet of the parse tree for successful parses
-                if (!string.IsNullOrEmpty(parseResult.ParseTree))
-                {
-                    var preview = parseResult.ParseTree.Length > 200 
-                        ? parseResult.ParseTree.Substring(0, 200) + "..." 
+                if (!string.IsNullOrEmpty(parseResult.ParseTree)) {
+                    var preview = parseResult.ParseTree.Length > 200
+                        ? parseResult.ParseTree.Substring(0, 200) + "..."
                         : parseResult.ParseTree;
                     Console.WriteLine($"  Parse tree preview: {preview}");
                 }
             }
-            else
-            {
+            else {
                 errorCount++;
                 Console.WriteLine("✗ Parse Result: ERROR");
                 Console.WriteLine($"  Error message: {parseResult.Error}");
             }
-            
+
             // Test utility function as well
             var isValidUtil = QueryUtils.IsValidPlpgsql(example.Code);
             Console.WriteLine($"  Utility validation: {(isValidUtil ? "✓ Valid" : "✗ Invalid")}");
-            
+
             Console.WriteLine();
         }
 
@@ -757,9 +708,8 @@ END;"
         Console.WriteLine($"Successful parses: {successCount}");
         Console.WriteLine($"Failed parses: {errorCount}");
         Console.WriteLine($"Success rate: {(double)successCount / plpgsqlExamples.Length * 100:F1}%");
-        
-        if (successCount > 0)
-        {
+
+        if (successCount > 0) {
             Console.WriteLine();
             Console.WriteLine("✓ PL/pgSQL parsing functionality is working correctly!");
             Console.WriteLine("  - The parser can handle various PL/pgSQL constructs");
