@@ -48,4 +48,4 @@ jobs:
     
     # Push the package
     - name: NuGet push
-      run: dotnet nuget push "${{env.PACKAGE_OUTPUT_DIRECTORY}}/${{PROJECT_NAME}}.${{github.event.inputs.version.nupkg}}" --api-key ${{steps.login.outputs.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json
+      run: dotnet nuget push "${{env.PACKAGE_OUTPUT_DIRECTORY}}/${{env.PROJECT_NAME}}.${{github.event.inputs.version.nupkg}}" --api-key ${{steps.login.outputs.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json
