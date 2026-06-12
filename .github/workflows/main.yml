@@ -41,10 +41,10 @@ jobs:
             platform: linux/arm64
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
 
       - name: Build libpg_query in Linux container
         shell: bash
@@ -69,7 +69,7 @@ jobs:
             '
 
       - name: Upload native asset
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: native-${{ matrix.rid }}
           path: artifacts/native/${{ matrix.rid }}
@@ -90,7 +90,7 @@ jobs:
             machine: arm64
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Build libpg_query on macOS
         shell: bash
@@ -105,7 +105,7 @@ jobs:
           otool -L "artifacts/native/${{ matrix.rid }}/native/libpg_query.dylib"
 
       - name: Upload native asset
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: native-${{ matrix.rid }}
           path: artifacts/native/${{ matrix.rid }}
@@ -124,33 +124,42 @@ jobs:
             arch: amd64_arm64
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Configure MSVC
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: ${{ matrix.arch }}
+        uses: actions/checkout@v6
 
       - name: Build libpg_query DLL on Windows
-        shell: pwsh
+        shell: cmd
         run: |
-          $ErrorActionPreference = 'Stop'
-          $libpgQueryPath = Join-Path $env:RUNNER_TEMP 'libpg_query'
-          git clone --depth 1 --branch $env:LIBPG_QUERY_REF https://github.com/pganalyze/libpg_query.git $libpgQueryPath
+          setlocal enabledelayedexpansion
+          for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set "VSINSTALL=%%i"
+          if not defined VSINSTALL (
+            echo Visual Studio C++ build tools were not found.
+            exit /b 1
+          )
+          call "%VSINSTALL%\VC\Auxiliary\Build\vcvarsall.bat" ${{ matrix.arch }}
+          if errorlevel 1 exit /b 1
 
-          Push-Location $libpgQueryPath
+          set "LIBPG_QUERY_PATH=%RUNNER_TEMP%\libpg_query"
+          git clone --depth 1 --branch "%LIBPG_QUERY_REF%" https://github.com/pganalyze/libpg_query.git "%LIBPG_QUERY_PATH%"
+          if errorlevel 1 exit /b 1
+
+          pushd "%LIBPG_QUERY_PATH%"
           nmake /F Makefile.msvc build
-          Copy-Item (Join-Path $env:GITHUB_WORKSPACE 'eng\native\pg_query.def') .\pg_query.def
+          if errorlevel 1 exit /b 1
+          copy "%GITHUB_WORKSPACE%\eng\native\pg_query.def" ".\pg_query.def"
+          if errorlevel 1 exit /b 1
           link /DLL /NOLOGO /DEF:pg_query.def /OUT:pg_query.dll /IMPLIB:pg_query_dll.lib *.obj
+          if errorlevel 1 exit /b 1
           dumpbin /exports pg_query.dll
-          Pop-Location
+          if errorlevel 1 exit /b 1
+          popd
 
-          $nativeOutput = Join-Path $env:GITHUB_WORKSPACE 'artifacts\native\${{ matrix.rid }}\native'
-          New-Item -ItemType Directory -Path $nativeOutput -Force | Out-Null
-          Copy-Item (Join-Path $libpgQueryPath 'pg_query.dll') (Join-Path $nativeOutput 'pg_query.dll')
+          set "NATIVE_OUTPUT=%GITHUB_WORKSPACE%\artifacts\native\${{ matrix.rid }}\native"
+          mkdir "%NATIVE_OUTPUT%"
+          copy "%LIBPG_QUERY_PATH%\pg_query.dll" "%NATIVE_OUTPUT%\pg_query.dll"
+          if errorlevel 1 exit /b 1
 
       - name: Upload native asset
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: native-${{ matrix.rid }}
           path: artifacts/native/${{ matrix.rid }}
@@ -165,15 +174,15 @@ jobs:
       - build-native-windows
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Download native assets
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           pattern: native-*
           path: downloaded-native-assets
@@ -233,7 +242,7 @@ jobs:
           }
 
       - name: Upload NuGet package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: nupkg
           path: packages/*
@@ -253,12 +262,12 @@ jobs:
           - macos-14
     steps:
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Download NuGet package
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: nupkg
           path: packages
@@ -298,13 +307,13 @@ jobs:
       id-token: write
     steps:
       - name: Download NuGet package
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: nupkg
           path: packages
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
