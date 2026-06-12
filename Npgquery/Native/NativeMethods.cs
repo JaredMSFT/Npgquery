@@ -124,9 +124,6 @@ internal static unsafe class NativeMethods {
     internal static extern PgQueryFingerprintResult pg_query_fingerprint(byte[] input);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-    internal static extern PgQueryDeparseResult pg_query_deparse(byte[] input);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
     internal static extern PgQueryDeparseResult pg_query_deparse_protobuf(PgQueryProtobuf parseTree);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]

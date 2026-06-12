@@ -18,7 +18,7 @@ A high-performance .NET library for parsing PostgreSQL queries using the officia
 
 ## Documentation
 
-Visit the [GitHub repository](https://github.com/yourusername/Npgquery) for complete documentation, examples, and API reference.
+Visit the [GitHub repository](https://github.com/JaredMSFT/Npgquery) for complete documentation, examples, and API reference.
 
 ## License
 

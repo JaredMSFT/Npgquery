@@ -1,52 +1,322 @@
 name: Release
+
 on:
   workflow_dispatch:
     inputs:
       version:
         description: 'The version to release (e.g., 1.0.0)'
         required: true
+      libpg_query_ref:
+        description: 'libpg_query tag or branch to build'
+        required: true
+        default: '18.0.0'
+      publish:
+        description: 'Publish to NuGet after package smoke tests pass'
+        type: boolean
+        required: true
+        default: false
 
 permissions:
-  id-token: write
   contents: read
 
 env:
-  BuildConfiguration: Release
-  PROJECT_PATH: 'Npgquery/Npgquery.csproj'
-  PACKAGE_OUTPUT_DIRECTORY: '/github/workspace/packages'
+  BUILD_CONFIGURATION: Release
+  DOTNET_VERSION: '10.0.x'
+  LIBPG_QUERY_REF: ${{ inputs.libpg_query_ref }}
+  PACKAGE_OUTPUT_DIRECTORY: packages
+  PROJECT_PATH: Npgquery/Npgquery.csproj
+  SOLUTION_PATH: Npgquery.sln
 
 jobs:
-  build-and-publish:
-    runs-on: ubuntu-latest
-    container:
-      image: mcr.microsoft.com/dotnet/sdk:9.0
+  build-native-linux:
+    name: Build native ${{ matrix.rid }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: linux-x64
+            platform: linux/amd64
+          - rid: linux-arm64
+            platform: linux/arm64
     steps:
-    - name: Install Azure CLI
-      run: |
-        apt-get update
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Checkout
-      uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
-    - name: Create output directory
-      run: mkdir -p ${{ env.PACKAGE_OUTPUT_DIRECTORY }}
+      - name: Build libpg_query in Linux container
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            --platform "${{ matrix.platform }}" \
+            -e LIBPG_QUERY_REF="${LIBPG_QUERY_REF}" \
+            -e RID="${{ matrix.rid }}" \
+            -v "${GITHUB_WORKSPACE}:/workspace" \
+            -w /workspace \
+            debian:bookworm-slim \
+            bash -lc '
+              set -euo pipefail
+              apt-get update
+              apt-get install -y --no-install-recommends ca-certificates curl file git build-essential make
+              git clone --depth 1 --branch "$LIBPG_QUERY_REF" https://github.com/pganalyze/libpg_query.git /tmp/libpg_query
+              make -C /tmp/libpg_query build_shared
+              mkdir -p "artifacts/native/$RID/native"
+              cp /tmp/libpg_query/libpg_query.so "artifacts/native/$RID/native/libpg_query.so"
+              file "artifacts/native/$RID/native/libpg_query.so"
+            '
 
-    - name: Build
-      run: dotnet build ${{ env.PROJECT_PATH }} --configuration ${{ env.BuildConfiguration }} -p:Optimize=true
+      - name: Upload native asset
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.rid }}
+          path: artifacts/native/${{ matrix.rid }}
+          if-no-files-found: error
 
-    - name: Create NuGet Package
-      run: dotnet pack ${{ env.PROJECT_PATH }} -c ${{ env.BuildConfiguration }} --no-build --no-restore -o ${{ env.PACKAGE_OUTPUT_DIRECTORY }}
+  build-native-macos:
+    name: Build native ${{ matrix.rid }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: osx-x64
+            os: macos-14-intel
+            machine: x86_64
+          - rid: osx-arm64
+            os: macos-14
+            machine: arm64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Create NuGet Symbols Package
-      run: dotnet pack ${{ env.PROJECT_PATH }} -c ${{ env.BuildConfiguration }} --no-build --include-symbols /p:SymbolPackageFormat=snupkg --no-restore -o ${{ env.PACKAGE_OUTPUT_DIRECTORY }}
-      
-    # Get a short-lived NuGet API key
-    - name: NuGet login (OIDC → temp API key)
-      uses: NuGet/login@v1
-      id: login
-      with:
-        user: ${{ secrets.NUGET_USER }}
-    
-    # Push the package
-    - name: NuGet push
-      run: dotnet nuget push "${{env.PACKAGE_OUTPUT_DIRECTORY}}/${{env.PROJECT_NAME}}.${{github.event.inputs.version.nupkg}}" --api-key ${{steps.login.outputs.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json
+      - name: Build libpg_query on macOS
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = "${{ matrix.machine }}"
+          git clone --depth 1 --branch "$LIBPG_QUERY_REF" https://github.com/pganalyze/libpg_query.git "$RUNNER_TEMP/libpg_query"
+          make -C "$RUNNER_TEMP/libpg_query" build_shared
+          mkdir -p "artifacts/native/${{ matrix.rid }}/native"
+          cp "$RUNNER_TEMP/libpg_query/libpg_query.dylib" "artifacts/native/${{ matrix.rid }}/native/libpg_query.dylib"
+          file "artifacts/native/${{ matrix.rid }}/native/libpg_query.dylib"
+          otool -L "artifacts/native/${{ matrix.rid }}/native/libpg_query.dylib"
+
+      - name: Upload native asset
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.rid }}
+          path: artifacts/native/${{ matrix.rid }}
+          if-no-files-found: error
+
+  build-native-windows:
+    name: Build native ${{ matrix.rid }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: win-x64
+            arch: x64
+          - rid: win-arm64
+            arch: amd64_arm64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.arch }}
+
+      - name: Build libpg_query DLL on Windows
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $libpgQueryPath = Join-Path $env:RUNNER_TEMP 'libpg_query'
+          git clone --depth 1 --branch $env:LIBPG_QUERY_REF https://github.com/pganalyze/libpg_query.git $libpgQueryPath
+
+          Push-Location $libpgQueryPath
+          nmake /F Makefile.msvc build
+          Copy-Item (Join-Path $env:GITHUB_WORKSPACE 'eng\native\pg_query.def') .\pg_query.def
+          link /DLL /NOLOGO /DEF:pg_query.def /OUT:pg_query.dll /IMPLIB:pg_query_dll.lib *.obj
+          dumpbin /exports pg_query.dll
+          Pop-Location
+
+          $nativeOutput = Join-Path $env:GITHUB_WORKSPACE 'artifacts\native\${{ matrix.rid }}\native'
+          New-Item -ItemType Directory -Path $nativeOutput -Force | Out-Null
+          Copy-Item (Join-Path $libpgQueryPath 'pg_query.dll') (Join-Path $nativeOutput 'pg_query.dll')
+
+      - name: Upload native asset
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.rid }}
+          path: artifacts/native/${{ matrix.rid }}
+          if-no-files-found: error
+
+  pack:
+    name: Pack NuGet package
+    runs-on: windows-latest
+    needs:
+      - build-native-linux
+      - build-native-macos
+      - build-native-windows
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Download native assets
+        uses: actions/download-artifact@v4
+        with:
+          pattern: native-*
+          path: downloaded-native-assets
+
+      - name: Stage native assets for packing
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Get-ChildItem downloaded-native-assets -Directory | ForEach-Object {
+            $rid = $_.Name -replace '^native-', ''
+            $source = Join-Path $_.FullName 'native'
+            $destination = Join-Path 'Npgquery\runtimes' "$rid\native"
+            New-Item -ItemType Directory -Path $destination -Force | Out-Null
+            Copy-Item (Join-Path $source '*') $destination -Force
+          }
+          Get-ChildItem Npgquery\runtimes -Recurse -File | Select-Object FullName, Length
+
+      - name: Restore
+        run: dotnet restore ${{ env.SOLUTION_PATH }}
+
+      - name: Build
+        run: dotnet build ${{ env.SOLUTION_PATH }} --configuration ${{ env.BUILD_CONFIGURATION }} --no-restore -p:ClientVersion=${{ inputs.version }} -p:GeneratePackageOnBuild=false -p:ContinuousIntegrationBuild=true
+
+      - name: Pack
+        run: dotnet pack ${{ env.PROJECT_PATH }} --configuration ${{ env.BUILD_CONFIGURATION }} --no-build --no-restore -p:ClientVersion=${{ inputs.version }} -p:GeneratePackageOnBuild=false -p:ContinuousIntegrationBuild=true -o ${{ env.PACKAGE_OUTPUT_DIRECTORY }}
+
+      - name: Verify native assets in package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $package = Get-ChildItem $env:PACKAGE_OUTPUT_DIRECTORY -Filter "Npgquery.${{ inputs.version }}.nupkg" | Select-Object -First 1
+          if (-not $package) {
+            throw "Npgquery.${{ inputs.version }}.nupkg was not produced."
+          }
+
+          $expected = @(
+            'runtimes/win-x64/native/pg_query.dll',
+            'runtimes/win-arm64/native/pg_query.dll',
+            'runtimes/linux-x64/native/libpg_query.so',
+            'runtimes/linux-arm64/native/libpg_query.so',
+            'runtimes/osx-x64/native/libpg_query.dylib',
+            'runtimes/osx-arm64/native/libpg_query.dylib'
+          )
+
+          $zip = [System.IO.Compression.ZipFile]::OpenRead($package.FullName)
+          try {
+            $entries = $zip.Entries | ForEach-Object { $_.FullName }
+            $missing = $expected | Where-Object { $_ -notin $entries }
+            if ($missing) {
+              throw "Package is missing native assets: $($missing -join ', ')"
+            }
+            $expected | ForEach-Object { "Found $_" }
+          }
+          finally {
+            $zip.Dispose()
+          }
+
+      - name: Upload NuGet package
+        uses: actions/upload-artifact@v4
+        with:
+          name: nupkg
+          path: packages/*
+          if-no-files-found: error
+
+  smoke-test:
+    name: Smoke test package on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    needs: pack
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-24.04
+          - windows-latest
+          - macos-14-intel
+          - macos-14
+    steps:
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Download NuGet package
+        uses: actions/download-artifact@v4
+        with:
+          name: nupkg
+          path: packages
+
+      - name: Create and run smoke test app
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $testProject = Join-Path $env:RUNNER_TEMP 'npgquery-smoke'
+          dotnet new console --framework net10.0 --name NpgquerySmoke --output $testProject
+          $testProjectFile = Join-Path $testProject 'NpgquerySmoke.csproj'
+          $packageSource = (Resolve-Path packages).Path
+          dotnet add $testProjectFile package Npgquery --version ${{ inputs.version }} --source $packageSource
+
+          @'
+          using Npgquery;
+
+          using var parser = new Parser();
+          var result = parser.Parse("SELECT 1");
+          if (result.IsError || result.ParseTree is null)
+          {
+              throw new InvalidOperationException(result.Error ?? "Parser returned no parse tree.");
+          }
+
+          Console.WriteLine("Npgquery package smoke test passed.");
+          '@ | Set-Content (Join-Path $testProject 'Program.cs')
+
+          dotnet run --project $testProject --configuration Release --framework net10.0
+
+  publish:
+    name: Publish to NuGet
+    runs-on: ubuntu-24.04
+    needs: smoke-test
+    if: ${{ inputs.publish }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Download NuGet package
+        uses: actions/download-artifact@v4
+        with:
+          name: nupkg
+          path: packages
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: NuGet login
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: NuGet push
+        run: |
+          for package in packages/*.nupkg packages/*.snupkg; do
+            [ -e "$package" ] || continue
+            dotnet nuget push "$package" --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+          done

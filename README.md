@@ -1,6 +1,6 @@
 ﻿# Npgquery - PostgreSQL Query Parser for .NET
 
-A high-performance .NET 9 C# library for parsing PostgreSQL queries using the battle-tested `libpg_query` library. This library provides the same functionality as popular wrappers in other languages like Go, Rust, Python, and JavaScript.
+A high-performance .NET C# library for parsing PostgreSQL queries using the battle-tested `libpg_query` library. This library provides the same functionality as popular wrappers in other languages like Go, Rust, Python, and JavaScript.
 
 ## Features
 
@@ -742,11 +742,13 @@ catch (NativeLibraryException ex)
 
 ## Native Dependencies
 
-This library requires the `libpg_query` native library. The NuGet package includes pre-compiled binaries for:
+This library requires the `libpg_query` native library. Npgquery loads that native parser through .NET interop, so your application must have the correct platform-specific file available at runtime:
 
-- Windows (x64, ARM64)
-- Linux (x64, ARM64)
-- macOS (x64, ARM64)
+- Windows: `pg_query.dll`
+- Linux: `libpg_query.so`
+- macOS: `libpg_query.dylib`
+
+The intended NuGet experience is that Npgquery includes the supported native builds under `runtimes/<rid>/native/`, which lets .NET copy and load the correct file automatically. First-time users should not need to have `pg_query` preinstalled. The release workflow builds those native assets before packing the NuGet package, using Linux containers where possible and hosted macOS/Windows runners where platform-specific toolchains are required. If a supported native asset is missing, you need to build or otherwise provide the native library yourself. See [NATIVE_SETUP.md](NATIVE_SETUP.md) for the recommended folder layout and troubleshooting steps.
 
 ## Supported Features
 
