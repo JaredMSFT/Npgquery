@@ -663,21 +663,6 @@ public class ReadmeExampleTests : IDisposable
     }
 
     [Fact]
-    public void QueryUtils_RoundTripTest_ReadmeExample_Works()
-    {
-        // Example from README - RoundTripTest
-        var query = "SELECT id, name FROM users WHERE active = true ORDER BY name";
-        var (success, roundTripQuery) = QueryUtils.RoundTripTest(query);
-        
-        // Round trip may not always succeed depending on query complexity
-        if (success)
-        {
-            Assert.NotNull(roundTripQuery);
-            Assert.Contains("SELECT", roundTripQuery);
-        }
-    }
-
-    [Fact]
     public void QueryUtils_AstToSql_ReadmeExample_Works()
     {
         // Example from README - AstToSql

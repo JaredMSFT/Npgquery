@@ -1,12 +1,10 @@
 using System.Runtime.InteropServices;
-using System.Text;
-
 namespace Npgquery.Native;
 
 /// <summary>
 /// Native interop for libpg_query
 /// </summary>
-internal static unsafe class NativeMethods {
+internal static class NativeMethods {
     private const string LibraryName = "pg_query";
 
     #region Native Structures
@@ -100,16 +98,6 @@ internal static unsafe class NativeMethods {
         public IntPtr error;
     }
 
-    /// <summary>
-    /// Internal processed scan result for native operations
-    /// </summary>
-    internal struct NativeScanResult {
-        public int? Version { get; set; }
-        public SqlToken[]? Tokens { get; set; }
-        public string? Error { get; set; }
-        public string? Stderr { get; set; }
-    }
-
     #endregion
 
     #region DLL Imports
@@ -164,123 +152,6 @@ internal static unsafe class NativeMethods {
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
     internal static extern void pg_query_free_protobuf_parse_result(PgQueryProtobufParseResult result);
-
-    #endregion
-
-    #region Native Helper Methods
-
-    internal static string? PtrToString(IntPtr ptr) {
-        if (ptr == IntPtr.Zero) return null;
-#if NET472
-        return PtrToStringUtf8Compat(ptr);
-#else
-        return Marshal.PtrToStringUTF8(ptr);
-#endif
-    }
-
-#if NET472
-    // Fallback implementation for UTF8 pointer -> string conversion (net472 lacks Marshal.PtrToStringUTF8)
-    private static string? PtrToStringUtf8Compat(IntPtr ptr)
-    {
-        if (ptr == IntPtr.Zero) return null;
-        byte* bytes = (byte*)ptr;
-        int len = 0;
-        while (bytes[len] != 0) len++;
-        return Encoding.UTF8.GetString(bytes, len);
-    }
-#endif
-
-    internal static byte[] StringToUtf8Bytes(string input) {
-        var bytes = Encoding.UTF8.GetBytes(input);
-        Array.Resize(ref bytes, bytes.Length + 1); // Add null terminator
-        return bytes;
-    }
-
-    internal static PgQueryError? MarshalError(IntPtr errorPtr)
-    {
-        if (errorPtr == IntPtr.Zero)
-            return null;
-        
-        return Marshal.PtrToStructure<PgQueryError>(errorPtr);
-    }
-
-    internal static PgQuerySplitStmt[] MarshalSplitStmts(PgQuerySplitResult result) {
-        if (result.n_stmts == 0 || result.stmts == IntPtr.Zero)
-            return Array.Empty<PgQuerySplitStmt>();
-
-        var stmts = new PgQuerySplitStmt[result.n_stmts];
-        int ptrSize = Marshal.SizeOf<IntPtr>();
-        for (int i = 0; i < result.n_stmts; i++) {
-            IntPtr stmtPtr = Marshal.ReadIntPtr(result.stmts, i * ptrSize);
-            stmts[i] = Marshal.PtrToStructure<PgQuerySplitStmt>(stmtPtr);
-        }
-        return stmts;
-    }
-
-    internal static NativeScanResult ProcessScanResult(PgQueryScanResult nativeResult, string originalQuery) {
-        if (nativeResult.error != IntPtr.Zero) {
-            // Use MarshalError for proper error handling
-            string? errorMessage = null;
-            var errorStruct = MarshalError(nativeResult.error);
-            if (errorStruct?.message != IntPtr.Zero)
-            {
-                errorMessage = PtrToString(errorStruct.Value.message);
-            }
-            
-            return new NativeScanResult {
-                Error = errorMessage ?? "Scan error",
-                Stderr = PtrToString(nativeResult.stderr_buffer)
-            };
-        }
-
-        var stderr = PtrToString(nativeResult.stderr_buffer);
-
-        if (nativeResult.pbuf.data != IntPtr.Zero && nativeResult.pbuf.len != UIntPtr.Zero) {
-            try {
-                var protobufData = ProtobufHelper.ExtractProtobufData(nativeResult.pbuf);
-                var result = ProtobufHelper.DeserializeScanResult(protobufData, originalQuery);
-                result.Stderr = stderr;
-                return result;
-            }
-            catch (Exception ex) {
-                return new NativeScanResult {
-                    Error = $"Failed to process protobuf data: {ex.Message}",
-                    Stderr = stderr
-                };
-            }
-        }
-        else {
-            return new NativeScanResult {
-                Error = "No protobuf data available",
-                Stderr = stderr
-            };
-        }
-    }
-
-    /// <summary>
-    /// Allocates unmanaged memory for a PgQueryProtobuf from a byte array
-    /// </summary>
-    internal static PgQueryProtobuf AllocPgQueryProtobuf(byte[] protoBytes)
-    {
-        var protoStruct = new PgQueryProtobuf
-        {
-            len = (UIntPtr)protoBytes.Length,
-            data = System.Runtime.InteropServices.Marshal.AllocHGlobal(protoBytes.Length)
-        };
-        System.Runtime.InteropServices.Marshal.Copy(protoBytes, 0, protoStruct.data, protoBytes.Length);
-        return protoStruct;
-    }
-
-    /// <summary>
-    /// Frees unmanaged memory for a PgQueryProtobuf
-    /// </summary>
-    internal static void FreePgQueryProtobuf(PgQueryProtobuf protoStruct)
-    {
-        if (protoStruct.data != IntPtr.Zero)
-        {
-            System.Runtime.InteropServices.Marshal.FreeHGlobal(protoStruct.data);
-        }
-    }
 
     #endregion
 }

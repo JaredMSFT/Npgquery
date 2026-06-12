@@ -16,10 +16,10 @@ public sealed class Parser : IDisposable
     /// </summary>
     public ParseResult Parse(string query, ParseOptions? options = null)
     {
-        ThrowIfDisposedOrNull(query);
+        ThrowIfDisposedOrNull(query, nameof(query));
         
         return ExecuteNativeOperation(query,
-            q => NativeMethods.pg_query_parse(NativeMethods.StringToUtf8Bytes(q)),
+            q => NativeMethods.pg_query_parse(NativeMethodHelpers.StringToUtf8Bytes(q)),
             (result, q) =>
             {
                 var error = ExtractError(result.error);
@@ -30,7 +30,7 @@ public sealed class Parser : IDisposable
                 
                 if (result.tree != IntPtr.Zero)
                 {
-                    var parseTreeJson = NativeMethods.PtrToString(result.tree);
+                    var parseTreeJson = NativeMethodHelpers.PtrToString(result.tree);
                     if (!string.IsNullOrEmpty(parseTreeJson))
                     {
                         return new ParseResult 
@@ -51,14 +51,14 @@ public sealed class Parser : IDisposable
     /// </summary>
     public NormalizeResult Normalize(string query)
     {
-        ThrowIfDisposedOrNull(query);
+        ThrowIfDisposedOrNull(query, nameof(query));
 
         return ExecuteNativeOperation(query, 
-            q => NativeMethods.pg_query_normalize(NativeMethods.StringToUtf8Bytes(q)),
+            q => NativeMethods.pg_query_normalize(NativeMethodHelpers.StringToUtf8Bytes(q.Trim())),
             (result, q) => new NormalizeResult
             {
                 Query = q,
-                NormalizedQuery = NativeMethods.PtrToString(result.normalized_query),
+                NormalizedQuery = NativeMethodHelpers.PtrToString(result.normalized_query),
                 Error = ExtractError(result.error)
             },
             NativeMethods.pg_query_free_normalize_result);
@@ -69,14 +69,14 @@ public sealed class Parser : IDisposable
     /// </summary>
     public FingerprintResult Fingerprint(string query)
     {
-        ThrowIfDisposedOrNull(query);
+        ThrowIfDisposedOrNull(query, nameof(query));
 
         return ExecuteNativeOperation(query,
-            q => NativeMethods.pg_query_fingerprint(NativeMethods.StringToUtf8Bytes(q)),
+            q => NativeMethods.pg_query_fingerprint(NativeMethodHelpers.StringToUtf8Bytes(q)),
             (result, q) => new FingerprintResult
             {
                 Query = q,
-                Fingerprint = NativeMethods.PtrToString(result.fingerprint_str),
+                Fingerprint = NativeMethodHelpers.PtrToString(result.fingerprint_str),
                 Error = ExtractError(result.error)
             },
             NativeMethods.pg_query_free_fingerprint_result);
@@ -87,13 +87,13 @@ public sealed class Parser : IDisposable
     /// </summary>
     public SplitResult Split(string query)
     {
-        ThrowIfDisposedOrNull(query);
+        ThrowIfDisposedOrNull(query, nameof(query));
 
         return ExecuteNativeOperation(query,
-            q => NativeMethods.pg_query_split_with_parser(NativeMethods.StringToUtf8Bytes(q)),
+            q => NativeMethods.pg_query_split_with_parser(NativeMethodHelpers.StringToUtf8Bytes(q)),
             (result, q) =>
             {
-                var stmts = NativeMethods.MarshalSplitStmts(result);
+                var stmts = NativeMethodHelpers.MarshalSplitStmts(result);
                 var statements = stmts.Select(stmt => new SqlStatement
                 {
                     Location = stmt.stmt_location,
@@ -116,13 +116,13 @@ public sealed class Parser : IDisposable
     /// </summary>
     public ScanResult Scan(string query)
     {
-        ThrowIfDisposedOrNull(query);
+        ThrowIfDisposedOrNull(query, nameof(query));
 
         return ExecuteNativeOperation(query,
-            q => NativeMethods.pg_query_scan(NativeMethods.StringToUtf8Bytes(q)),
+            q => NativeMethods.pg_query_scan(NativeMethodHelpers.StringToUtf8Bytes(q)),
             (result, q) =>
             {
-                var processed = NativeMethods.ProcessScanResult(result, q);
+                var processed = NativeMethodHelpers.ProcessScanResult(result, q);
                 return new ScanResult
                 {
                     Query = q,
@@ -140,15 +140,15 @@ public sealed class Parser : IDisposable
     /// </summary>
     public EnhancedScanResult ScanWithProtobuf(string query)
     {
-        ThrowIfDisposedOrNull(query);
+        ThrowIfDisposedOrNull(query, nameof(query));
 
         return ExecuteNativeOperation(query,
-            q => NativeMethods.pg_query_scan(NativeMethods.StringToUtf8Bytes(q)),
+            q => NativeMethods.pg_query_scan(NativeMethodHelpers.StringToUtf8Bytes(q)),
             (result, q) =>
             {
-                var processed = NativeMethods.ProcessScanResult(result, q);
+                var processed = NativeMethodHelpers.ProcessScanResult(result, q);
                 PgQuery.ScanResult? protobufResult = null;
-                
+
                 if (result.pbuf.data != IntPtr.Zero && result.pbuf.len != UIntPtr.Zero)
                 {
                     try
@@ -158,7 +158,7 @@ public sealed class Parser : IDisposable
                     }
                     catch { /* Ignore protobuf parsing errors */ }
                 }
-                
+
                 return new EnhancedScanResult
                 {
                     Query = q,
@@ -177,14 +177,14 @@ public sealed class Parser : IDisposable
     /// </summary>
     public PlpgsqlParseResult ParsePlpgsql(string plpgsqlCode)
     {
-        ThrowIfDisposedOrNull(plpgsqlCode);
+        ThrowIfDisposedOrNull(plpgsqlCode, nameof(plpgsqlCode));
 
         return ExecuteNativeOperation(plpgsqlCode,
-            q => NativeMethods.pg_query_parse_plpgsql(NativeMethods.StringToUtf8Bytes(q)),
+            q => NativeMethods.pg_query_parse_plpgsql(NativeMethodHelpers.StringToUtf8Bytes(q)),
             (result, q) => new PlpgsqlParseResult
             {
                 Query = q,
-                ParseTree = NativeMethods.PtrToString(result.tree),
+                ParseTree = NativeMethodHelpers.PtrToString(result.tree),
                 Error = ExtractError(result.error)
             },
             NativeMethods.pg_query_free_plpgsql_parse_result);
@@ -203,7 +203,7 @@ public sealed class Parser : IDisposable
             var json = parseTree.RootElement.GetRawText();
             var protoParseResult = ProtobufHelper.ParseResultFromJson(json);
             var protoBytes = protoParseResult.ToByteArray();
-            var protoStruct = NativeMethods.AllocPgQueryProtobuf(protoBytes);
+            var protoStruct = NativeMethodHelpers.AllocPgQueryProtobuf(protoBytes);
 
             try
             {
@@ -213,7 +213,7 @@ public sealed class Parser : IDisposable
                     return new DeparseResult
                     {
                         Ast = parseTree.RootElement.ToString(),
-                        Query = NativeMethods.PtrToString(deparseResult.query),
+                        Query = NativeMethodHelpers.PtrToString(deparseResult.query),
                         Error = ExtractError(deparseResult.error)
                     };
                 }
@@ -224,7 +224,7 @@ public sealed class Parser : IDisposable
             }
             finally
             {
-                NativeMethods.FreePgQueryProtobuf(protoStruct);
+                NativeMethodHelpers.FreePgQueryProtobuf(protoStruct);
             }
         }
         catch (Exception ex)
@@ -238,24 +238,40 @@ public sealed class Parser : IDisposable
     }
 
     /// <summary>
-    /// Parse a PostgreSQL query into protobuf format
+    /// Parse a PostgreSQL query into managed protobuf format
     /// </summary>
     public ProtobufParseResult ParseProtobuf(string query)
     {
-        ThrowIfDisposedOrNull(query);
+        ThrowIfDisposedOrNull(query, nameof(query));
 
         try
         {
-            var result = NativeMethods.pg_query_parse_protobuf(NativeMethods.StringToUtf8Bytes(query));
-            var error = ExtractError(result.error);
-            
-            return new ProtobufParseResult
+            var result = NativeMethods.pg_query_parse_protobuf(NativeMethodHelpers.StringToUtf8Bytes(query));
+            try
             {
-                Query = query,
-                ParseTree = error == null ? result.parse_tree : null,
-                NativeResult = error == null ? result : null,
-                Error = error
-            };
+                var error = ExtractError(result.error);
+                if (error is not null)
+                {
+                    return new ProtobufParseResult
+                    {
+                        Query = query,
+                        Error = error
+                    };
+                }
+
+                // Copy native protobuf data before freeing the native parse result.
+                var protobufData = ProtobufHelper.ExtractProtobufData(result.parse_tree);
+                return new ProtobufParseResult
+                {
+                    Query = query,
+                    ParseTree = PgQuery.ParseResult.Parser.ParseFrom(protobufData),
+                    ProtobufData = protobufData
+                };
+            }
+            finally
+            {
+                NativeMethods.pg_query_free_protobuf_parse_result(result);
+            }
         }
         catch (Exception ex)
         {
@@ -270,35 +286,81 @@ public sealed class Parser : IDisposable
     /// <summary>
     /// Deparse a PostgreSQL protobuf parse result back to SQL
     /// </summary>
+    /// <param name="parseResult">The protobuf parse result to deparse</param>
+    /// <returns>Deparse result containing the SQL query or error details</returns>
     public DeparseResult DeparseProtobuf(ProtobufParseResult parseResult)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(Parser));
         if (parseResult is null) throw new ArgumentNullException(nameof(parseResult));
 
-        if (parseResult.IsError || parseResult.ParseTree == null)
+        if (parseResult.ParseTree is null)
+        {
+            return new DeparseResult
+            {
+                Ast = parseResult.Query,
+                Error = parseResult.Error is null
+                    ? "Cannot deparse a null protobuf parse tree"
+                    : $"Cannot deparse a failed protobuf parse result: {parseResult.Error}"
+            };
+        }
+
+        return DeparseProtobuf(parseResult.ParseTree);
+    }
+
+    /// <summary>
+    /// Deparse a managed PostgreSQL protobuf parse tree back to SQL
+    /// </summary>
+    /// <param name="parseTree">The managed protobuf parse tree to deparse</param>
+    /// <returns>Deparse result containing the SQL query or error details</returns>
+    public DeparseResult DeparseProtobuf(PgQuery.ParseResult parseTree)
+    {
+        if (_disposed) throw new ObjectDisposedException(nameof(Parser));
+        if (parseTree is null) throw new ArgumentNullException(nameof(parseTree));
+
+        return DeparseProtobuf(parseTree.ToByteArray());
+    }
+
+    /// <summary>
+    /// Deparse serialized PostgreSQL protobuf parse tree bytes back to SQL
+    /// </summary>
+    /// <param name="protobufData">The serialized protobuf parse tree bytes to deparse</param>
+    /// <returns>Deparse result containing the SQL query or error details</returns>
+    public DeparseResult DeparseProtobuf(byte[] protobufData)
+    {
+        if (_disposed) throw new ObjectDisposedException(nameof(Parser));
+        if (protobufData is null) throw new ArgumentNullException(nameof(protobufData));
+        if (protobufData.Length == 0)
         {
             return new DeparseResult
             {
                 Ast = "",
-                Error = "Cannot deparse an error result or null parse tree"
+                Error = "Cannot deparse empty protobuf data"
             };
         }
 
         try
         {
-            var deparseResult = NativeMethods.pg_query_deparse_protobuf(parseResult.ParseTree.Value);
+            var protoStruct = NativeMethodHelpers.AllocPgQueryProtobuf(protobufData);
             try
             {
-                return new DeparseResult
+                var deparseResult = NativeMethods.pg_query_deparse_protobuf(protoStruct);
+                try
                 {
-                    Ast = "",
-                    Query = NativeMethods.PtrToString(deparseResult.query),
-                    Error = ExtractError(deparseResult.error)
-                };
+                    return new DeparseResult
+                    {
+                        Ast = "",
+                        Query = NativeMethodHelpers.PtrToString(deparseResult.query),
+                        Error = ExtractError(deparseResult.error)
+                    };
+                }
+                finally
+                {
+                    NativeMethods.pg_query_free_deparse_result(deparseResult);
+                }
             }
             finally
             {
-                NativeMethods.pg_query_free_deparse_result(deparseResult);
+                NativeMethodHelpers.FreePgQueryProtobuf(protoStruct);
             }
         }
         catch (Exception ex)
@@ -308,13 +370,6 @@ public sealed class Parser : IDisposable
                 Ast = "",
                 Error = $"Native library error: {ex.Message}"
             };
-        }
-        finally
-        {
-            if (parseResult.NativeResult != null)
-            {
-                NativeMethods.pg_query_free_protobuf_parse_result(parseResult.NativeResult.Value);
-            }
         }
     }
 
@@ -342,6 +397,12 @@ public sealed class Parser : IDisposable
     public static DeparseResult QuickDeparse(JsonDocument parseTree) => 
         ExecuteWithInstance(parser => parser.Deparse(parseTree));
 
+    public static ProtobufParseResult QuickParseProtobuf(string query) =>
+        ExecuteWithInstance(parser => parser.ParseProtobuf(query));
+
+    public static DeparseResult QuickDeparseProtobuf(ProtobufParseResult parseResult) =>
+        ExecuteWithInstance(parser => parser.DeparseProtobuf(parseResult));
+
     public static SplitResult QuickSplit(string query) => 
         ExecuteWithInstance(parser => parser.Split(query));
 
@@ -355,19 +416,19 @@ public sealed class Parser : IDisposable
         ExecuteWithInstance(parser => parser.ScanWithProtobuf(query));
 
     // Helper methods
-    private void ThrowIfDisposedOrNull(string parameter)
+    private void ThrowIfDisposedOrNull(string? value, string parameterName)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(Parser));
-        if (parameter is null) throw new ArgumentNullException(nameof(parameter));
+        if (value is null) throw new ArgumentNullException(parameterName);
     }
 
     private static string? ExtractError(IntPtr errorPtr)
     {
         if (errorPtr == IntPtr.Zero) return null;
         
-        var errorStruct = NativeMethods.MarshalError(errorPtr);
+        var errorStruct = NativeMethodHelpers.MarshalError(errorPtr);
         return errorStruct?.message != IntPtr.Zero 
-            ? NativeMethods.PtrToString(errorStruct.Value.message) ?? "Unknown error"
+            ? NativeMethodHelpers.PtrToString(errorStruct.Value.message) ?? "Unknown error"
             : "Unknown error";
     }
 

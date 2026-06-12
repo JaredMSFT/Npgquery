@@ -135,19 +135,6 @@ public static class QueryUtils
     }
 
     /// <summary>
-    /// Round-trip test: parse a query and deparse it back
-    /// </summary>
-    public static (bool Success, string? RoundTripQuery) RoundTripTest(string query)
-    {
-        var parseResult = Parser.QuickParse(query);
-        if (parseResult.IsError || parseResult.ParseTree is null)
-            return (false, null);
-
-        var deparseResult = Parser.QuickDeparse(parseResult.ParseTree);
-        return deparseResult.IsError ? (false, null) : (true, deparseResult.Query);
-    }
-
-    /// <summary>
     /// Check if PL/pgSQL code is valid
     /// </summary>
     public static bool IsValidPlpgsql(string plpgsqlCode) => 

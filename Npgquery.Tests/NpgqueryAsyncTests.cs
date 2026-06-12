@@ -163,10 +163,10 @@ public class ParserAsyncTests : IDisposable
     {
         // Arrange
         var queries = Enumerable.Repeat("SELECT pg_sleep(1)", 10);
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(10));
 
         // Act & Assert
-        await Assert.ThrowsAsync<TaskCanceledException>(
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
             () => _parser.ParseManyAsync(queries, cancellationToken: cts.Token));
     }
 

@@ -100,6 +100,43 @@ public class ParserExtendedTests : IDisposable
     }
 
     [Fact]
+    public void QuickProtobufRoundTrip_StaticMethods_Work()
+    {
+        // Arrange
+        var query = "SELECT 1";
+
+        // Act
+        var parseResult = Parser.QuickParseProtobuf(query);
+        var deparseResult = Parser.QuickDeparseProtobuf(parseResult);
+
+        // Assert
+        Assert.True(parseResult.IsSuccess);
+        Assert.True(deparseResult.IsSuccess);
+        Assert.NotNull(deparseResult.Query);
+    }
+
+    [Fact]
+    public void DeparseProtobuf_ManagedParseTreeAndBytes_WorkAfterParseReturns()
+    {
+        // Arrange
+        var query = "SELECT 1";
+
+        // Act
+        var parseResult = _parser.ParseProtobuf(query);
+        var deparseFromTree = _parser.DeparseProtobuf(parseResult.ParseTree!);
+        var deparseFromBytes = _parser.DeparseProtobuf(parseResult.ProtobufData!);
+
+        // Assert
+        Assert.True(parseResult.IsSuccess);
+        Assert.NotNull(parseResult.ParseTree);
+        Assert.NotNull(parseResult.ProtobufData);
+        Assert.True(deparseFromTree.IsSuccess);
+        Assert.True(deparseFromBytes.IsSuccess);
+        Assert.NotNull(deparseFromTree.Query);
+        Assert.NotNull(deparseFromBytes.Query);
+    }
+
+    [Fact]
     public void QuickSplit_StaticMethod_Works()
     {
         // Arrange
@@ -128,19 +165,21 @@ public class ParserExtendedTests : IDisposable
     }
 
     [Fact]
-    public void RoundTripTest_ParseAndDeparse_ReturnsValidSql()
+    public void ParseProtobuf_ThenDeparseProtobuf_ReturnsValidSql()
     {
         // Arrange
         var originalQuery = "SELECT id, name FROM users WHERE active = true ORDER BY name";
 
         // Act
-        var (success, roundTripQuery) = QueryUtils.RoundTripTest(originalQuery);
+        var parseResult = _parser.ParseProtobuf(originalQuery);
+        var deparseResult = _parser.DeparseProtobuf(parseResult);
 
         // Assert
-        Assert.True(success);
-        Assert.NotNull(roundTripQuery);
-        Assert.Contains("SELECT", roundTripQuery);
-        Assert.Contains("users", roundTripQuery);
+        Assert.True(parseResult.IsSuccess);
+        Assert.True(deparseResult.IsSuccess);
+        Assert.NotNull(deparseResult.Query);
+        Assert.Contains("SELECT", deparseResult.Query);
+        Assert.Contains("users", deparseResult.Query);
     }
 
     [Fact]

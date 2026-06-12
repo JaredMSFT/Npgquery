@@ -502,12 +502,30 @@ Console.WriteLine($"Parsed object: {mySelect}");
 
 ### Static `Parser` Quick Methods
 
-For one-off operations without creating a parser instance.
+Use the static `Quick*` methods for infrequent, one-off operations where you do not need to keep a parser instance around. Each quick method creates a short-lived `Parser`, calls the matching instance method, and disposes it for you.
+
+```csharp
+var result = Parser.QuickParse("SELECT * FROM users WHERE id = 1");
+var fingerprint = Parser.QuickFingerprint("SELECT * FROM users WHERE id = 1");
+```
+
+For protobuf round-trip workflows, use `QuickParseProtobuf` with `QuickDeparseProtobuf` so deparsing receives the native protobuf parse tree directly.
+
+```csharp
+var parseResult = Parser.QuickParseProtobuf(query);
+var deparseResult = Parser.QuickDeparseProtobuf(parseResult);
+```
+
+Prefer an explicit `Parser` instance when you are performing many operations or processing a batch. This avoids repeated parser construction while preserving the same parse/deparse behavior.
+
+Available quick methods:
 
 - `QuickParse(query, options)`
 - `QuickNormalize(query)`
 - `QuickFingerprint(query)`
 - `QuickDeparse(ast)`
+- `QuickParseProtobuf(query)`
+- `QuickDeparseProtobuf(parseResult)`
 - `QuickSplit(query)`
 - `QuickScan(query)`
 - `QuickParsePlpgsql(code)`
@@ -563,7 +581,6 @@ A static class with helper methods for common tasks.
 - `NormalizeStatements(sqlText)`: Splits a multi-statement string and normalizes each one.
 - `HaveSameStructure(query1, query2)`: Check if two queries have the same fingerprint.
 - `AstToSql(parseTree)`: Convert a JSON AST back to an SQL string.
-- `RoundTripTest(query)`: A utility to parse a query and deparse it back, checking for consistency.
 - `IsValidPlpgsql(plpgsqlCode)`: Check if a string of PL/pgSQL code is valid.
 - `ValidateQueries(queries)`: Validate a collection of queries.
 - `GetQueryErrors(queries)`: Get detailed errors for a collection of queries.

@@ -269,12 +269,24 @@ public sealed record EnhancedScanResult : ScanResult
 public sealed record ProtobufParseResult : QueryResultBase
 {
     /// <summary>
-    /// The protobuf parse tree (for internal use)
+    /// The managed protobuf parse tree.
     /// </summary>
-    internal PgQueryProtobuf? ParseTree { get; init; }
-    
+    [JsonIgnore]
+    public PgQuery.ParseResult? ParseTree { get; init; }
+
     /// <summary>
-    /// The native result (for cleanup)
+    /// The serialized protobuf parse tree bytes.
     /// </summary>
-    internal PgQueryProtobufParseResult? NativeResult { get; init; }
+    [JsonIgnore]
+    public byte[]? ProtobufData { get; init; }
+
+    /// <summary>
+    /// Convert the protobuf parse result to JSON.
+    /// </summary>
+    /// <param name="formatted">Whether to format the JSON with indentation</param>
+    /// <returns>JSON representation of the parse result</returns>
+    public string? ToProtobufJson(bool formatted = false) =>
+        ParseTree != null
+            ? ProtobufHelper.ToJson(ParseTree, formatted)
+            : null;
 }

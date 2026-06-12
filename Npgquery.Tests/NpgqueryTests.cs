@@ -162,7 +162,8 @@ public class ParserTests : IDisposable
     public void Parse_WithNullQuery_ThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => _parser.Parse(null!));
+        var exception = Assert.Throws<ArgumentNullException>(() => _parser.Parse(null!));
+        Assert.Equal("query", exception.ParamName);
     }
 
     [Fact]

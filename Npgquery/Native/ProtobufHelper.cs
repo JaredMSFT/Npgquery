@@ -15,13 +15,13 @@ internal static class ProtobufHelper
     /// <param name="protobufData">Raw protobuf data</param>
     /// <param name="originalQuery">Original query string for text extraction</param>
     /// <returns>Processed scan result</returns>
-    internal static NativeMethods.NativeScanResult DeserializeScanResult(byte[] protobufData, string originalQuery)
+    internal static NativeMethodHelpers.NativeScanResult DeserializeScanResult(byte[] protobufData, string originalQuery)
     {
         try
         {
             var scanResult = PgQuery.ScanResult.Parser.ParseFrom(protobufData);
-            
-            return new NativeMethods.NativeScanResult
+
+            return new NativeMethodHelpers.NativeScanResult
             {
                 Version = scanResult.Version,
                 Tokens = ConvertProtobufTokensToSqlTokens(scanResult.Tokens, originalQuery),
@@ -31,7 +31,7 @@ internal static class ProtobufHelper
         }
         catch (Exception ex)
         {
-            return new NativeMethods.NativeScanResult
+            return new NativeMethodHelpers.NativeScanResult
             {
                 Version = null,
                 Tokens = null,
@@ -305,7 +305,7 @@ internal static class ProtobufHelper
 /// Native protobuf structure for libpg_query
 /// </summary>
 [StructLayout(LayoutKind.Sequential)]
-public struct PgQueryProtobuf {
+internal struct PgQueryProtobuf {
     public UIntPtr len;
     public IntPtr data;
 }
@@ -314,7 +314,8 @@ public struct PgQueryProtobuf {
 /// Native protobuf parse result structure for libpg_query
 /// </summary>
 [StructLayout(LayoutKind.Sequential)]
-public struct PgQueryProtobufParseResult {
+internal struct PgQueryProtobufParseResult {
     public PgQueryProtobuf parse_tree;
+    public IntPtr stderr_buffer;
     public IntPtr error;
 }

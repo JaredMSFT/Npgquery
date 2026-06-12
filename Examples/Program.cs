@@ -353,14 +353,14 @@ $$ LANGUAGE plpgsql;"
 
         Console.WriteLine();
 
-        // Round-trip example (parse then deparse)
-        Console.WriteLine("C. Round-trip Test (Parse ? Deparse):");
+        // Round-trip example (native protobuf parse then deparse)
+        Console.WriteLine("C. Round-trip Test (Parse -> Deparse):");
         var originalQuery = "SELECT u.name, COUNT(p.id) as post_count FROM users u LEFT JOIN posts p ON u.id = p.user_id GROUP BY u.id, u.name ORDER BY post_count DESC";
         Console.WriteLine($"Original: {originalQuery}");
 
-        var parseResult = parser.Parse(originalQuery);
-        if (parseResult.IsSuccess && parseResult.ParseTree is not null) {
-            var deparseResult = parser.Deparse(parseResult.ParseTree);
+        var parseResult = parser.ParseProtobuf(originalQuery);
+        if (parseResult.IsSuccess) {
+            var deparseResult = parser.DeparseProtobuf(parseResult);
             if (deparseResult.IsSuccess) {
                 Console.WriteLine($"Deparsed: {deparseResult.Query}");
                 Console.WriteLine($"Round-trip successful: {!string.IsNullOrEmpty(deparseResult.Query)}");
@@ -369,6 +369,7 @@ $$ LANGUAGE plpgsql;"
                 Console.WriteLine($"Deparse failed: {deparseResult.Error}");
             }
         }
+
         Console.WriteLine();
 
         // PL/pgSQL parsing example
@@ -468,10 +469,6 @@ $$;"
         // Get keywords utility
         var keywords = QueryUtils.GetKeywords(originalQuery);
         Console.WriteLine($"Keywords found: {string.Join(", ", keywords)}");
-
-        // Round-trip utility
-        var (success, roundTripQuery) = QueryUtils.RoundTripTest(originalQuery);
-        Console.WriteLine($"Round-trip test: {(success ? "? Success" : "? Failed")}");
 
         // Count statements utility
         var statementCount = QueryUtils.CountStatements(multiQuery);
