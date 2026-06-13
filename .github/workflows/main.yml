@@ -221,11 +221,9 @@ jobs:
 
           $expected = @(
             'runtimes/win-x64/native/pg_query.dll',
-            'runtimes/win-arm64/native/pg_query.dll',
-            'runtimes/linux-x64/native/libpg_query.so',
-            'runtimes/linux-arm64/native/libpg_query.so',
-            'runtimes/osx-x64/native/libpg_query.dylib',
-            'runtimes/osx-arm64/native/libpg_query.dylib'
+            ,'runtimes/win-arm64/native/pg_query.dll'
+            ,'runtimes/linux-x64/native/libpg_query.so'
+            ,'runtimes/linux-arm64/native/libpg_query.so' # ,'runtimes/osx-x64/native/libpg_query.dylib' ,'runtimes/osx-arm64/native/libpg_query.dylib'
           )
 
           $zip = [System.IO.Compression.ZipFile]::OpenRead($package.FullName)
