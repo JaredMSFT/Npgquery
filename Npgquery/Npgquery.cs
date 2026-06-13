@@ -114,7 +114,7 @@ public sealed class Parser : IDisposable
     /// <summary>
     /// Scan/tokenize a PostgreSQL query
     /// </summary>
-    public ScanResult Scan(string query)
+    public SqlScanResult Scan(string query)
     {
         ThrowIfDisposedOrNull(query, nameof(query));
 
@@ -123,7 +123,7 @@ public sealed class Parser : IDisposable
             (result, q) =>
             {
                 var processed = NativeMethodHelpers.ProcessScanResult(result, q);
-                return new ScanResult
+                return new SqlScanResult
                 {
                     Query = q,
                     Version = processed.Version,
@@ -147,14 +147,14 @@ public sealed class Parser : IDisposable
             (result, q) =>
             {
                 var processed = NativeMethodHelpers.ProcessScanResult(result, q);
-                PgQuery.ScanResult? protobufResult = null;
+                Npgquery.Protobuf.ScanResult? protobufResult = null;
 
                 if (result.pbuf.data != IntPtr.Zero && result.pbuf.len != UIntPtr.Zero)
                 {
                     try
                     {
                         var protobufData = ProtobufHelper.ExtractProtobufData(result.pbuf);
-                        protobufResult = PgQuery.ScanResult.Parser.ParseFrom(protobufData);
+                        protobufResult = Npgquery.Protobuf.ScanResult.Parser.ParseFrom(protobufData);
                     }
                     catch { /* Ignore protobuf parsing errors */ }
                 }
@@ -264,7 +264,7 @@ public sealed class Parser : IDisposable
                 return new ProtobufParseResult
                 {
                     Query = query,
-                    ParseTree = PgQuery.ParseResult.Parser.ParseFrom(protobufData),
+                    ParseTree = Npgquery.Protobuf.ParseResult.Parser.ParseFrom(protobufData),
                     ProtobufData = protobufData
                 };
             }
@@ -312,7 +312,7 @@ public sealed class Parser : IDisposable
     /// </summary>
     /// <param name="parseTree">The managed protobuf parse tree to deparse</param>
     /// <returns>Deparse result containing the SQL query or error details</returns>
-    public DeparseResult DeparseProtobuf(PgQuery.ParseResult parseTree)
+    public DeparseResult DeparseProtobuf(Npgquery.Protobuf.ParseResult parseTree)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(Parser));
         if (parseTree is null) throw new ArgumentNullException(nameof(parseTree));
@@ -406,7 +406,7 @@ public sealed class Parser : IDisposable
     public static SplitResult QuickSplit(string query) => 
         ExecuteWithInstance(parser => parser.Split(query));
 
-    public static ScanResult QuickScan(string query) => 
+    public static SqlScanResult QuickScan(string query) => 
         ExecuteWithInstance(parser => parser.Scan(query));
 
     public static PlpgsqlParseResult QuickParsePlpgsql(string plpgsqlCode) => 

@@ -59,7 +59,7 @@ public static class ParserAsync
     /// <summary>
     /// Asynchronously scan/tokenize a PostgreSQL query
     /// </summary>
-    public static Task<ScanResult> ScanAsync(this Parser parser, string query, 
+    public static Task<SqlScanResult> ScanAsync(this Parser parser, string query, 
         CancellationToken cancellationToken = default) =>
         Task.Run(() => parser.Scan(query), cancellationToken);
 
@@ -167,7 +167,7 @@ public static class ParserAsync
     /// <param name="query">The SQL query to scan</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Scan result</returns>
-    public static async Task<ScanResult> QuickScanAsync(string query, 
+    public static async Task<SqlScanResult> QuickScanAsync(string query, 
         CancellationToken cancellationToken = default)
     {
         using var parser = new Parser();

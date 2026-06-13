@@ -3,6 +3,7 @@
 syntax = "proto3";
 
 package pg_query;
+option csharp_namespace = "Npgquery.Protobuf";
 
 message ParseResult {
   int32 version = 1;

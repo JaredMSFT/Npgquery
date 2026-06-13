@@ -378,7 +378,7 @@ Tokenize/scan a SQL query.
 
 **Returns:**
 
-- A `ScanResult` object with `Tokens` and `Error` properties.
+- A `SqlScanResult` object with `Tokens` and `Error` properties.
 
 ```csharp
 using var parser = new Parser();

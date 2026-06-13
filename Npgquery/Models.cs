@@ -206,9 +206,9 @@ public sealed record SqlToken
 }
 
 /// <summary>
-/// Represents the result of scanning/tokenizing a PostgreSQL query
+/// Represents the result of scanning/tokenizing a PostgreSQL query.
 /// </summary>
-public record ScanResult : QueryResultBase
+public record SqlScanResult : QueryResultBase
 {
     /// <summary>
     /// The PostgreSQL version number
@@ -244,13 +244,13 @@ public sealed record PlpgsqlParseResult : QueryResultBase
 /// <summary>
 /// Enhanced scan result that includes both processed tokens and raw protobuf data
 /// </summary>
-public sealed record EnhancedScanResult : ScanResult
+public sealed record EnhancedScanResult : SqlScanResult
 {
     /// <summary>
     /// Raw protobuf scan result for advanced processing
     /// </summary>
     [JsonIgnore]
-    public PgQuery.ScanResult? ProtobufScanResult { get; init; }
+    public Npgquery.Protobuf.ScanResult? ProtobufScanResult { get; init; }
 
     /// <summary>
     /// Convert the protobuf scan result to JSON
@@ -272,7 +272,7 @@ public sealed record ProtobufParseResult : QueryResultBase
     /// The managed protobuf parse tree.
     /// </summary>
     [JsonIgnore]
-    public PgQuery.ParseResult? ParseTree { get; init; }
+    public Npgquery.Protobuf.ParseResult? ParseTree { get; init; }
 
     /// <summary>
     /// The serialized protobuf parse tree bytes.

@@ -1,5 +1,5 @@
 using Google.Protobuf;
-using PgQuery;
+using Npgquery.Protobuf;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 namespace Npgquery.Native;
@@ -19,7 +19,7 @@ internal static class ProtobufHelper
     {
         try
         {
-            var scanResult = PgQuery.ScanResult.Parser.ParseFrom(protobufData);
+            var scanResult = ScanResult.Parser.ParseFrom(protobufData);
 
             return new NativeMethodHelpers.NativeScanResult
             {
@@ -46,11 +46,11 @@ internal static class ProtobufHelper
     /// </summary>
     /// <param name="protobufData">Raw protobuf data</param>
     /// <returns>Deserialized parse result</returns>
-    internal static PgQuery.ParseResult? DeserializeParseResult(byte[] protobufData)
+    internal static Npgquery.Protobuf.ParseResult? DeserializeParseResult(byte[] protobufData)
     {
         try
         {
-            return PgQuery.ParseResult.Parser.ParseFrom(protobufData);
+            return Npgquery.Protobuf.ParseResult.Parser.ParseFrom(protobufData);
         }
         catch
         {
@@ -130,7 +130,7 @@ internal static class ProtobufHelper
     /// <param name="formatted">Whether to format the JSON with indentation</param>
     /// <returns>JSON representation of the parse tree</returns>
 
-    public static string ToJson(PgQuery.ParseResult parseResult, bool formatted = false) {
+    public static string ToJson(Npgquery.Protobuf.ParseResult parseResult, bool formatted = false) {
         var jsonFormatter = new JsonFormatter(JsonFormatter.Settings.Default.WithFormatDefaultValues(true));
         var json = jsonFormatter.Format(parseResult);
 
@@ -148,7 +148,7 @@ internal static class ProtobufHelper
     /// <param name="scanResult">The protobuf ScanResult</param>
     /// <param name="formatted">Whether to format the JSON with indentation</param>
     /// <returns>JSON representation of the scan result</returns>
-    public static string ToJson(PgQuery.ScanResult scanResult, bool formatted = false) {
+    public static string ToJson(Npgquery.Protobuf.ScanResult scanResult, bool formatted = false) {
         var jsonFormatter = new JsonFormatter(JsonFormatter.Settings.Default.WithFormatDefaultValues(true));
         var json = jsonFormatter.Format(scanResult);
 
@@ -165,9 +165,9 @@ internal static class ProtobufHelper
     /// </summary>
     /// <param name="json">JSON representation of parse tree</param>
     /// <returns>Protobuf ParseResult object</returns>
-    public static PgQuery.ParseResult ParseResultFromJson(string json) {
+    public static Npgquery.Protobuf.ParseResult ParseResultFromJson(string json) {
         var parser = new JsonParser(JsonParser.Settings.Default);
-        return parser.Parse<PgQuery.ParseResult>(json);
+        return parser.Parse<Npgquery.Protobuf.ParseResult>(json);
     }
 
     /// <summary>
@@ -175,9 +175,9 @@ internal static class ProtobufHelper
     /// </summary>
     /// <param name="json">JSON representation of scan result</param>
     /// <returns>Protobuf ScanResult object</returns>
-    public static PgQuery.ScanResult ScanResultFromJson(string json) {
+    public static Npgquery.Protobuf.ScanResult ScanResultFromJson(string json) {
         var parser = new JsonParser(JsonParser.Settings.Default);
-        return parser.Parse<PgQuery.ScanResult>(json);
+        return parser.Parse<Npgquery.Protobuf.ScanResult>(json);
     }
 
     /// <summary>
@@ -185,7 +185,7 @@ internal static class ProtobufHelper
     /// </summary>
     /// <param name="parseResult">The parse result to search</param>
     /// <returns>Collection of SelectStmt objects</returns>
-    public static IEnumerable<SelectStmt> ExtractSelectStatements(PgQuery.ParseResult parseResult) {
+    public static IEnumerable<SelectStmt> ExtractSelectStatements(Npgquery.Protobuf.ParseResult parseResult) {
         foreach (var stmt in parseResult.Stmts) {
             if (stmt.Stmt?.SelectStmt != null) {
                 yield return stmt.Stmt.SelectStmt;
@@ -198,7 +198,7 @@ internal static class ProtobufHelper
     /// </summary>
     /// <param name="parseResult">The parse result to search</param>
     /// <returns>Collection of table names</returns>
-    public static IEnumerable<string> ExtractTableNames(PgQuery.ParseResult parseResult) {
+    public static IEnumerable<string> ExtractTableNames(Npgquery.Protobuf.ParseResult parseResult) {
         var tableNames = new HashSet<string>();
 
         foreach (var stmt in parseResult.Stmts) {
@@ -266,7 +266,7 @@ internal static class ProtobufHelper
     /// </summary>
     /// <param name="parseResult">The parse result</param>
     /// <returns>Number of statements</returns>
-    public static int CountStatements(PgQuery.ParseResult parseResult) {
+    public static int CountStatements(Npgquery.Protobuf.ParseResult parseResult) {
         return parseResult.Stmts.Count;
     }
 
@@ -275,7 +275,7 @@ internal static class ProtobufHelper
     /// </summary>
     /// <param name="parseResult">The parse result to check</param>
     /// <returns>True if contains DDL statements</returns>
-    public static bool ContainsDdlStatements(PgQuery.ParseResult parseResult) {
+    public static bool ContainsDdlStatements(Npgquery.Protobuf.ParseResult parseResult) {
         return parseResult.Stmts.Any(stmt => IsDdlStatement(stmt));
     }
 

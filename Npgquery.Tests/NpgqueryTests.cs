@@ -1,7 +1,6 @@
 using System.Text.Json;
 using Google.Protobuf;
 using Npgquery;
-using PgQuery;
 using Xunit;
 
 namespace Npgquery.Tests;
