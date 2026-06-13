@@ -169,8 +169,8 @@ jobs:
     name: Pack NuGet package
     runs-on: windows-latest
     needs:
-      - build-native-linux
-      - build-native-macos
+#     - build-native-macos
+      - build-native-linux 
       - build-native-windows
     steps:
       - name: Checkout
